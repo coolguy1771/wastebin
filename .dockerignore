@@ -1,0 +1,12 @@
+*/node_modules
+*/.yarn
+*/tests
+*/.svelte-kit
+*/.eslintignore
+*/.eslintrc.cjs
+*/.gitignore
+*/.prettierrc
+*/.prettierrc
+*/playwright.config.js
+*/README.md
+*/build

@@ -1,0 +1,35 @@
+{
+  "name": "wastebin",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "package": "svelte-package",
+    "preview": "vite preview",
+    "test": "playwright test",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@architect/sveltekit-adapter": "^0.0.4",
+    "@playwright/test": "^1.25.0",
+    "@primer/css": "^20.4.4",
+    "@sveltejs/adapter-auto": "next",
+    "@sveltejs/adapter-static": "^1.0.0-next.41",
+    "@sveltejs/kit": "next",
+    "@sveltejs/package": "^1.0.0-next.3",
+    "autoprefixer": "^10.4.8",
+    "eslint": "^8.16.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-svelte3": "^4.0.0",
+    "prettier": "^2.6.2",
+    "prettier-plugin-svelte": "^2.7.0",
+    "svelte": "^3.44.0",
+    "svelte-check": "^2.8.0",
+    "svelte-highlight": "^6.2.1",
+    "svelte-preprocess": "^4.10.7",
+    "vite": "^3.1.0-beta.1"
+  },
+  "type": "module"
+}

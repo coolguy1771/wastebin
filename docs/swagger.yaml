@@ -1,0 +1,126 @@
+basePath: /api
+definitions:
+  handlers.ResponseHTTP:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  models.Paste:
+    properties:
+      author:
+        example: Dino
+        type: string
+      paste:
+        description: gorm.Model
+        example: Paste A
+        type: string
+    type: object
+info:
+  contact:
+    name: Tyler Witlin
+  description: This is an API for Wastebin
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Wastebin
+  version: "1.0"
+paths:
+  /v1/paste:
+    post:
+      consumes:
+      - application/json
+      description: Crate paste
+      parameters:
+      - description: Create paste
+        in: body
+        name: paste
+        required: true
+        schema:
+          $ref: '#/definitions/models.Paste'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.ResponseHTTP'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Paste'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ResponseHTTP'
+      summary: Creates a new paste
+      tags:
+      - pastes
+  /v1/paste/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove paste by ID
+      parameters:
+      - description: Paste ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ResponseHTTP'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ResponseHTTP'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/handlers.ResponseHTTP'
+      summary: Remove paste by ID
+      tags:
+      - pastes
+    get:
+      consumes:
+      - application/json
+      description: Get paste by ID
+      parameters:
+      - description: Paste ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.ResponseHTTP'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Paste'
+                  type: array
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ResponseHTTP'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/handlers.ResponseHTTP'
+      summary: Get paste by ID
+      tags:
+      - pastes
+swagger: "2.0"
