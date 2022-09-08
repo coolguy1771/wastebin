@@ -49,4 +49,3 @@ ENTRYPOINT [ "/tini", "--", "/wastebin" ]
 LABEL \
     org.opencontainers.image.title="wastebin" \
     org.opencontainers.image.source="https://github.com/coolguy1771/wastebin"
-    
