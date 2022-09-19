@@ -11,7 +11,6 @@ WORKDIR /build
 COPY web .
 
 RUN yarn && yarn build
-RUN ls -la  && cd build && ls -la && cat 200.html
 
 # BUILD BACKEND
 FROM golang:1.19.0-alpine as backend
