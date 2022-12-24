@@ -1,24 +1,29 @@
 package config
 
 import (
+	"log"
 	"strings"
 
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/env"
+	"go.uber.org/zap"
 )
 
-var Conf WastebinConfig
+var Conf Config
 
 /*
-	type Config struct {
-		App  WebappConfig   `koanf:"APP"`
-		DB   DatabaseConfig `koanf:"DB"`
-		Log  LoggerConfig   `koanf:"LOG"`
-		Auth AuthConfig     `koanf:"AUTH"`
+		type Config struct {
+		WebappConfig koanf:"APP"
+		DatabaseConfig koanf:"DB"
+		LoggerConfig koanf:"LOG"
+		AuthConfig koanf:"AUTH"
 	}
+
+}
 */
-type WastebinConfig struct {
+// WastebinConfig represents the configuration for the application.
+type Config struct {
 	DBUser         string `koanf:"DB_USER"`
 	DBPassword     string `koanf:"DB_PASSWORD"`
 	DBHost         string `koanf:"DB_HOST"`
@@ -28,9 +33,10 @@ type WastebinConfig struct {
 	DBMaxOpenConns int    `koanf:"DB_MAX_OPEN_CONNS"`
 	WebappPort     string `koanf:"WEBAPP_PORT"`
 	Dev            bool   `koanf:"DEV"`
+	LocalDB        bool   `koanf:"LOCAL_DB"`
 }
 
-type WebappConfig struct {
+type App struct {
 	WebappPort int `koanf:"WEBAPP_PORT"`
 }
 type DatabaseConfig struct {
@@ -48,7 +54,7 @@ type LoggerConfig struct {
 type AuthConfig struct {
 }
 
-func Load() *WastebinConfig {
+func Load() *Config {
 	var k = koanf.New(".")
 	k.Load(confmap.Provider(map[string]interface{}{
 		"WEBAPP_PORT":       "3000",
@@ -59,14 +65,16 @@ func Load() *WastebinConfig {
 		"DB_USER":           "wastebin",
 		"DB_NAME":           "wastebin",
 		"LOG_LEVEL":         "INFO",
-		"DEV":               "false",
+		"LOCAL_DB":          "false",
 	}, "."), nil)
 
 	k.Load(env.Provider("WASTEBIN_", ".", func(s string) string {
 		return strings.TrimPrefix(s, "WASTEBIN_")
 	}), nil)
 
-	k.Unmarshal("", &Conf)
+	if err := k.Unmarshal("", &Conf); err != nil {
+		log.Fatal("Error loading config", zap.Error(err))
+	}
 
 	return &Conf
 }

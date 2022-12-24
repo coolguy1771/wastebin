@@ -4,7 +4,7 @@ ARG TARGETPLATFORM
 ARG TARGETVARIANT=""
 
 # BUILD FRONTEND
-FROM node:18 as frontend
+FROM node:19 as frontend
 
 WORKDIR /build
 
@@ -21,11 +21,8 @@ ENV GO111MODULE=on \
     GOARCH=${TARGETARCH} \
     GOARM=${TARGETVARIANT}
 
-
-
 RUN apk add --no-cache ca-certificates tini-static gcc musl-dev \
     && update-ca-certificates
-
 
 WORKDIR /build
 
@@ -35,7 +32,6 @@ RUN go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o wastebin /bui
 
 # RUN
 FROM gcr.io/distroless/static:nonroot
-
 
 USER nonroot:nonroot
 

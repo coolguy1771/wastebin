@@ -34,24 +34,23 @@ services:
     image: ghcr.io/coolguy1771/wastebin:0.0.1
     restart: always
     environment:
-      - WASTEBIN_WEBAPP_PORT: 3000  # Optional, Defaults to 3000
-      - WASTEBIN_DB_USER: "wastebin" # Optional, Defaults to wastebin
-      - WASTEBIN_DB_HOST: "localhost" # Optional, Defaults to localhost
-      - WASTEBIN_DB_PORT: 5432 # Optional, Defaults to 5432
-      - WASTEBIN_DB_PASSWORD: "mysecretpassword"
-      - WASTEBIN_DB_NAME: wastebin # Optional, defaults to wastebin
-      - WASTEBIN_DB_MAX_IDLE_CONNS: 10 # Optional, defaults to 10
-      - WASTEBIN_DB_MAX_OPEN_CONNS: 50 # Optional, defaults to 50
-      - WASTEBIN_DEV: false # Use this to use a local sqlite database, if you want persistance you will need to specify a volume 
+      - WASTEBIN_WEBAPP_PORT=3000  # Optional, Defaults to 3000
+      - WASTEBIN_DB_USER="wastebin" # Optional, Defaults to wastebin
+      - WASTEBIN_DB_PORT=5432 # Optional, Defaults to 5432
+      - WASTEBIN_DB_PASSWORD="mysecretpassword"
+      - WASTEBIN_DB_NAME=wastebin # Optional, defaults to wastebin
+      - WASTEBIN_DB_MAX_IDLE_CONNS=10 # Optional, defaults to 10
+      - WASTEBIN_DB_MAX_OPEN_CONNS=50 # Optional, defaults to 50
+      - WASTEBIN_DEV=false # Use this to use a local sqlite database, if you want persistance you will need to specify a volume 
     ports:
       - "3000:3000"
   postgres:
     image: postgres:14.5
     restart: always
     enviorment:
-      - POSTGRES_PASSWORD: "mysecretpassword"
-      - POSTGRES_USER: "wastebin"
-      - POSTGRES_DB: "wastebin"
+      - POSTGRES_PASSWORD="mysecretpassword"
+      - POSTGRES_USER="wastebin"
+      - POSTGRES_DB="wastebin"
     ports:
       - "5432:5432"
 ```
