@@ -39,6 +39,7 @@ type Config struct {
 type App struct {
 	WebappPort int `koanf:"WEBAPP_PORT"`
 }
+
 type DatabaseConfig struct {
 	DBUser         string `koanf:"DB_USER"`
 	DBPassword     string `koanf:"DB_PASSWORD"`
@@ -48,14 +49,15 @@ type DatabaseConfig struct {
 	DBMaxIdleConns int    `koanf:"DB_MAX_IDLE_CONNS"`
 	DBMaxOpenConns int    `koanf:"DB_MAX_OPEN_CONNS"`
 }
+
 type LoggerConfig struct {
 	LogLevel string `koanf:"LOG_LEVEL"`
 }
-type AuthConfig struct {
-}
+
+type AuthConfig struct{}
 
 func Load() *Config {
-	var k = koanf.New(".")
+	k := koanf.New(".")
 	k.Load(confmap.Provider(map[string]interface{}{
 		"WEBAPP_PORT":       "3000",
 		"DB_MAX_IDLE_CONNS": "10",

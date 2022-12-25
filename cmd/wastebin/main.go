@@ -11,16 +11,19 @@ import (
 )
 
 func main() {
-
 	config.Load()
 
-	_, err := storage.Connect()
+	err := storage.Connect()
 	if err != nil {
 		log.Fatal("Error connecting to the database", zap.Error(err))
 	}
 
-	//TODO fix this
-	//defer db.Close()
+	defer storage.Close()
+
+	err = storage.Migrate()
+	if err != nil {
+		log.Fatal("Error migrating the database", zap.Error(err))
+	}
 
 	// Create new fiber instance
 	app := fiber.New(fiber.Config{

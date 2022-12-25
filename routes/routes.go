@@ -10,7 +10,6 @@ import (
 
 // Add routes to the app
 func AddRoutes(app *fiber.App) *fiber.App {
-
 	app.Use(cors.New())
 
 	app.Get("/swagger/*", swagger.HandlerDefault)

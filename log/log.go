@@ -23,12 +23,15 @@ func (l *Logger) Warn(msg string, fields ...zap.Field) {
 func (l *Logger) Error(msg string, fields ...zap.Field) {
 	l.l.Error(msg, fields...)
 }
+
 func (l *Logger) DPanic(msg string, fields ...zap.Field) {
 	l.l.DPanic(msg, fields...)
 }
+
 func (l *Logger) Panic(msg string, fields ...zap.Field) {
 	l.l.Panic(msg, fields...)
 }
+
 func (l *Logger) Fatal(msg string, fields ...zap.Field) {
 	l.l.Fatal(msg, fields...)
 }

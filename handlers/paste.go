@@ -11,42 +11,40 @@ import (
 	"go.uber.org/zap"
 )
 
-var db = storage.DBConn
-
 // GetPaste retrieves a paste by its UUID.
 // If the paste has expired or is set to be deleted after reading, it is deleted from the database.
 func GetPaste(c *fiber.Ctx) error {
 	// Read the paste UUID from the URL parameter
 	pasteUUID, err := uuid.Parse(c.Params("uuid"))
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).SendString("Paste not found")
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
 	}
 
 	// Retrieve the paste from the database
 	paste := models.Paste{}
-	if err := db.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).SendString("Paste not found")
+	if err := storage.DBConn.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
 	}
 
 	// Check if the paste has expired
 	if time.Now().After(paste.ExpiryTimestamp) {
-		if err := db.Delete(&paste).Error; err != nil {
+		if err := storage.DBConn.Delete(&paste).Error; err != nil {
 			log.Error("Error deleting expired paste from the database", zap.Error(err))
-			return c.Status(fiber.StatusInternalServerError).SendString("Error deleting paste")
+			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting expired paste from the database"})
 		}
-		return c.SendString("Paste expired and deleted")
+		return c.JSON(map[string]string{"message": "Paste expired and deleted"})
 	}
 
 	// Check if the paste should be deleted after reading
 	if paste.Burn {
-		if err := db.Delete(&paste).Error; err != nil {
+		if err := storage.DBConn.Delete(&paste).Error; err != nil {
 			log.Error("Error deleting paste after reading", zap.Error(err))
-			return c.Status(fiber.StatusInternalServerError).SendString("Error deleting paste")
+			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting paste after reading"})
 		}
 	}
 
 	// Return the paste content
-	return c.SendString(paste.Content)
+	return c.JSON(paste)
 }
 
 func CreatePaste(c *fiber.Ctx) error {
@@ -76,14 +74,15 @@ func CreatePaste(c *fiber.Ctx) error {
 	if !isValidLanguage(req.Language) {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Invalid language"})
 	}
-	log.Info("CreatePaste request validated")
+
+	log.Debug("Paste request body has been validated", zap.Any("request", req))
 
 	// Generate a UUID for the paste
 	pasteUUID, err := uuid.NewRandom()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": err.Error()})
 	}
-	log.Info("CreatePaste generated UUID", zap.String("uuid", pasteUUID.String()))
+	log.Info("Generated UUID", zap.String("uuid", pasteUUID.String()))
 
 	// Save the paste to the database
 	paste := models.Paste{
@@ -93,19 +92,19 @@ func CreatePaste(c *fiber.Ctx) error {
 		UUID:            pasteUUID,
 		ExpiryTimestamp: expiryTimestamp,
 	}
-	log.Info("CreatePaste created paste", zap.Any("paste", paste))
+	log.Debug("created paste object", zap.Any("paste", paste))
 
-	if err := db.Create(&paste).Error; err != nil {
+	if err := storage.DBConn.Create(&paste).Error; err != nil {
+		log.Error("Error saving paste to database", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": err.Error()})
 	}
-	log.Info("CreatePaste saved paste to database")
+	log.Info("Paste saved to database")
 	// Return the UUID of the newly created paste in the response body
 	response := map[string]string{
-		"status":  "success",
-		"message": "Paste created with UUID: " + pasteUUID.String(),
+		"message": "Paste created",
+		"uuid":    pasteUUID.String(),
 	}
 	return c.JSON(response)
-
 }
 
 func DeletePaste(c *fiber.Ctx) error {
@@ -116,11 +115,10 @@ func DeletePaste(c *fiber.Ctx) error {
 	}
 	// Delete the paste from the database
 	var paste models.Paste
-	if err := db.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
+	if err := storage.DBConn.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).SendString(err.Error())
-
 	}
-	if err := db.Delete(&paste).Error; err != nil {
+	if err := storage.DBConn.Delete(&paste).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
