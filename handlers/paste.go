@@ -26,9 +26,8 @@ func GetRawPaste(c *fiber.Ctx) error {
 
 	// Check if the paste has expired
 	if time.Now().After(paste.ExpiryTimestamp) {
-		if err := storage.DBConn.Delete(&paste).Error; err != nil {
-			log.Error("Error deleting expired paste from the database", zap.Error(err))
-			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting expired paste from the database"})
+		if err := storage.DBConn.Where("uuid = ?", pasteUUID).Delete(&paste).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": err.Error()})
 		}
 		return c.JSON(map[string]string{"message": "Paste expired and deleted"})
 	}
@@ -56,12 +55,14 @@ func GetPaste(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
 	}
+	log.Debug("Retrieving paste", zap.String("uuid", pasteUUID.String()))
 
 	// Retrieve the paste from the database
 	paste := models.Paste{}
 	if err := storage.DBConn.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
 	}
+	log.Debug("Retrieved paste", zap.String("uuid", pasteUUID.String()))
 
 	// Check if the paste has expired
 	if time.Now().After(paste.ExpiryTimestamp) {
@@ -79,7 +80,7 @@ func GetPaste(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting paste after reading"})
 		}
 	}
-
+	log.Info("Returning paste", zap.String("uuid", pasteUUID.String()))
 	// Return the paste content
 	return c.JSON(paste)
 }
@@ -143,7 +144,7 @@ func CreatePaste(c *fiber.Ctx) error {
 		log.Error("Error saving paste to database", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": err.Error()})
 	}
-	log.Info("Paste saved to database")
+	log.Info("Paste saved to database", zap.String("uuid", pasteUUID.String()))
 	// Return the UUID of the newly created paste in the response body
 	response := map[string]string{
 		"message": "Paste created",
@@ -156,16 +157,16 @@ func DeletePaste(c *fiber.Ctx) error {
 	// Read the paste UUID from the URL query string
 	pasteUUID, err := uuid.Parse(c.Query("uuid"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": err.Error()})
 	}
 	// Delete the paste from the database
 	var paste models.Paste
 	if err := storage.DBConn.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).SendString(err.Error())
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
 	}
-	if err := storage.DBConn.Delete(&paste).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	if err := storage.DBConn.Where("uuid = ?", pasteUUID).Delete(&paste).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": err.Error()})
 	}
 
-	return c.SendString("Paste deleted")
+	return c.JSON(map[string]string{"message": "Paste deleted"})
 }
