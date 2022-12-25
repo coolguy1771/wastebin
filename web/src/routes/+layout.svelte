@@ -10,8 +10,15 @@
   })
 </script>
 
+<svelte:head>
+  <title>Wastebin</title>
+</svelte:head>
+
 {#if visible}
   <main id="container" transition:fade>
     <slot />
   </main>
 {/if}
+
+<style>
+</style>

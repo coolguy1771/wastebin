@@ -3,7 +3,6 @@
 
   let created = false
   let burn = false
-  let syntaxes = ['js,ts,jsx,tsx']
 
   function onDrop(event) {
     event.preventDefault()
@@ -17,63 +16,66 @@
   function onDragOver(event) {
     event.preventDefault()
   }
-  //onMount(async () => {
-  //  const resp = await fetch('/api/v1/syntaxes').then((data) => {
-  //    return data.json()
-  //  })
-  //  syntaxes = resp.data
-  //})
+
+  // Handle form submission
+  async function onSubmit(event) {
+    event.preventDefault()
+
+    // Gather form data
+    const formData = new FormData(event.target)
+    const content = formData.get('text')
+    const expires = formData.get('expires')
+    const extension = formData.get('extension')
+
+    // Send the POST request to create the paste
+    const response = await fetch('/api/v1/paste', {
+      method: 'POST',
+      body: formData,
+    })
+
+    // If the request was successful, redirect the user to the URL of the created paste
+    if (response.ok) {
+      const pasteData = await response.json()
+      const pasteURL = `/paste/${pasteData.uuid}`
+      window.location = pasteURL
+    }
+  }
 </script>
 
-<svelte:head>
-  <title>Wastebin</title>
-</svelte:head>
+<div>
+  <form on:submit={onSubmit}>
+    <div class="container">
+      <div class="content">
+        <textarea
+          id="text"
+          name="text"
+          autocorrect="off"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="<paste text or drop file here>"
+          on:drop={onDrop}
+          on:dragover={onDragOver}
+        />
+      </div>
+      <div class="expiration-list">
+        <select name="expires" size="5">
+          <option selected="" value="">never</option>
+          <option value="600">10 minutes</option>
+          <option value="3600">1 hour</option>
+          <option value="86400">1 day</option>
+          <option value="604800">1 week</option>
+          <option value="215308800">1 year</option>
+        </select>
+        <!-- checbox for burning-->
+        <input type="checkbox" name="burn" label="Burn?" bind:value={burn} />
+      </div>
+      <div class="paste-button">
+        <button type="submit" title="Paste">Paste</button>
+      </div>
+    </div>
+  </form>
+</div>
 
-<form action="/api/v1/paste" method="post">
-  <div class="container">
-    <div class="content">
-      <textarea
-        id="text"
-        name="text"
-        autocorrect="off"
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="<paste text or drop file here>"
-        ondrop="onDrop"
-        ondragover="onDragOver"
-      />
-    </div>
-    <div class="expiration-list">
-      <select name="expires" size="5">
-        <option selected="" value="">never</option>
-        <option value="600">10 minutes</option>
-        <option value="3600">1 hour</option>
-        <option value="86400">1 day</option>
-        <option value="604800">1 week</option>
-        <option value="215308800">1 year</option>
-        <option value="burn">🔥 after reading</option>
-      </select>
-    </div>
-    <div class="extensions-list">
-      <select name="extension" size="21">
-        {#each syntaxes as syntax}
-          {#if syntax.file_extensions.len() > 0}
-            <option value="${syntax.file_extensions.first().unwrap()}">{syntax.name}</option>
-          {/if}
-        {/each}
-      </select>
-    </div>
-    <div class="paste-button">
-      <button type="submit" title="Paste">Paste</button>
-    </div>
-  </div>
-</form>
-
-<!--{#if burn}
-  <div class="center">
-    Copy <a href=`/paste/${id}`>this link</a>. It will be deleted after reading.
-  </div>
-{/if} -->
 <style>
   /* use a css grid layout */
 
@@ -95,8 +97,8 @@
   }
   .container {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-columns: 80% 20%;
+    grid-template-rows: 50% 50%;
     grid-template-areas:
       'content content content'
       'expiration extensions paste';
