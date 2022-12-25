@@ -1,20 +1,70 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { HighlightAuto } from 'svelte-highlight'
   import githubDarkDimmed from 'svelte-highlight/styles/github-dark-dimmed'
+  import Clipboard from 'clipboard'
 
-  let paste
+  let clipboard
+  let paste = {}
+  let errorMessage = ''
 
   onMount(async function () {
     // Get paste ID from URL
     const id = window.location.pathname.split('/')[2]
-
-    paste = await response.json()
+    // Send GET request to retrieve paste
+    try {
+      const response = await fetch(`/api/v1/paste/${id}`, {
+        method: 'GET',
+        'Content-Type': 'application/json',
+      })
+      if (!response.ok) {
+        throw new Error(response.statusText)
+      }
+      paste = await response.json()
+    } catch (error) {
+      errorMessage = error.message
+    }
+    clipboard = new Clipboard('.copy-button')
+  })
+  onDestroy(() => {
+    clipboard.destroy()
   })
 </script>
 
 <svelte:head>
   {@html githubDarkDimmed}
 </svelte:head>
+<div class="buttons">
+  <button id="download-button" class="button" disabled>Download</button>
+  <button id="copy-button" data-clipboard-text={paste.content} disabled>Copy to clipboard</button>
+</div>
+{#if errorMessage}
+  <div class="error-message">
+    <pre>{errorMessage}</pre>
+  </div>
+{:else}
+  <HighlightAuto code={paste.content} />
+{/if}
 
-<HighlightAuto code={paste.content} />
+<style>
+  .buttons {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+  .error-message {
+    color: red;
+  }
+  .button {
+    margin: 0 0.5rem;
+  }
+
+  #download-button {
+    background-color: #4caf50;
+    color: white;
+  }
+  #copy-button {
+    background-color: #2196f3;
+    color: white;
+  }
+</style>
