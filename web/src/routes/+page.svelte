@@ -39,7 +39,9 @@
       const pasteURL = `/paste/${pasteData.uuid}`
       window.location = pasteURL
     }
+    reader.readAsText(file)
   }
+
 </script>
 
 <div>
