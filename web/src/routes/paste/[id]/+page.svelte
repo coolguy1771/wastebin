@@ -1,49 +1,79 @@
 <script>
-  let paste
-  let code
-  let language
-  let id
+  import { onMount, onDestroy } from 'svelte'
+  import { HighlightAuto } from 'svelte-highlight'
+  import githubDarkDimmed from 'svelte-highlight/styles/github-dark-dimmed'
+  import Clipboard from 'clipboard'
 
-  //onMount(async function () {
-  //  id = window.location.pathname.split('/')[2]
-  //  const response = await fetch(`/api/v1/paste/${id}`, {
-  //    method: 'GET',
-  //  })
-  //  const data = await response.json()
-  //  paste = data.data
-  //  code = paste.paste
-  //  language = paste.language
-  //})
+  let clipboard
+  let paste = {}
+  let errorMessage = ''
 
-  // On event
-  function onEvent(event) {
-    if (event.key == 'n') {
-      window.location.href = '/'
-    } else if (event.key == 'r') {
-      window.location.href = `/paste/${id}?raw=true`
-    } else if (event.key == 'y') {
-      navigator.clipboard.writeText(window.location.href)
-    } else if (event.key == 'd') {
-      window.location.href = `/download/${id}.${extension}`
+  onMount(async function () {
+    // Get paste ID from URL
+    const id = window.location.pathname.split('/')[2]
+    // Send GET request to retrieve paste
+    try {
+      const response = await fetch(`/api/v1/paste/${id}`, {
+        method: 'GET',
+        'Content-Type': 'application/json',
+      })
+      if (!response.ok) {
+        throw new Error(response.statusText)
+      }
+      paste = await response.json()
+    } catch (error) {
+      errorMessage = error.message
     }
+    clipboard = new Clipboard('.copy-button')
+  })
+
+  onDestroy(() => {
+    clipboard.destroy()
+  })
+
+  function downloadPaste() {
+    // Create a link to the paste and simulate a click on it to download the paste
+    const link = document.createElement('a')
+    link.href = `data:text/plain;charset=utf-8,${encodeURIComponent(paste.content)}`
+    link.download = 'paste.txt'
+    link.click()
   }
 </script>
 
-<div>
-  <div>
-    <pre class="code">${paste.code}</pre>
-  </div>
-  <div class="paste-box">
-    <!-- if deleteion is possible -->
-    {#if paste.burn}
-      <a class="punctuation definition tag" href="/api/v1/{id}">del</a> •
-    {/if}
-
-    <a class="punctuation definition tag" href="/paste/{id}?dl={paste.extension}">↓</a>
-    <a class="punctuation definition tag" href="/paste/{id}?fmt=raw">raw</a>
-    <a class="punctuation definition tag" href="/">new</a>
-  </div>
+<svelte:head>
+  {@html githubDarkDimmed}
+</svelte:head>
+<div class="buttons">
+  <button id="download-button" class="button" on:click={downloadPaste}>Download</button>
+  <button id="copy-button" data-clipboard-text={paste.content} disabled>Copy to clipboard</button>
 </div>
+{#if errorMessage}
+  <div class="error-message">
+    <pre>{errorMessage}</pre>
+  </div>
+{:else}
+  <HighlightAuto code={paste.content} />
+{/if}
 
 <style>
+  .buttons {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+  .error-message {
+    color: red;
+  }
+  .button {
+    margin: 0 0.5rem;
+  }
+
+  #download-button {
+    background-color: #4caf50;
+    color: white;
+  }
+  #copy-button {
+    background-color: #2196f3;
+    color: white;
+  }
 </style>
