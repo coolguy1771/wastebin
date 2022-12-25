@@ -1,7 +1,6 @@
 <script>
   import { page } from '$app/stores'
   import { dev } from '$app/environment'
-  import Icon from '@iconify/svelte'
   // we don't want to use <svelte:window bind:online> here,
   // because we only care about the online state when
   // the page first loads

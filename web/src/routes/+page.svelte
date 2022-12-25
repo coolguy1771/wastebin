@@ -41,7 +41,6 @@
     }
     reader.readAsText(file)
   }
-
 </script>
 
 <div>
