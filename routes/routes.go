@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/handlers"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -9,7 +10,6 @@ import (
 
 // Add routes to the app
 func AddRoutes(app *fiber.App) *fiber.App {
-
 	app.Use(cors.New())
 
 	app.Get("/swagger/*", swagger.HandlerDefault)
@@ -21,17 +21,29 @@ func AddRoutes(app *fiber.App) *fiber.App {
 		return c.Next()
 	})
 
-	v1.Get("/paste/:id", handlers.GetPasteByID)
+	v1.Get("/paste/:uuid", handlers.GetPaste)
 	v1.Post("/paste", handlers.CreatePaste)
-	v1.Delete("/paste/:id", handlers.DeletePaste)
+	v1.Delete("/paste/:iuud", handlers.DeletePaste)
 
 	// Serve Single Page application
 	app.Static("/", "/web/")
+
+	if config.Conf.Dev {
+		app.Get("/", func(c *fiber.Ctx) error {
+			return c.SendFile("./web/build/index.html")
+		})
+		app.Get("/paste/*", func(c *fiber.Ctx) error {
+			return c.SendFile("./web/build/index.html")
+		})
+
+		return app
+	}
+
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendFile("/web/200.html")
+		return c.SendFile("/web/index.html")
 	})
 	app.Get("/paste/*", func(c *fiber.Ctx) error {
-		return c.SendFile("/web/200.html")
+		return c.SendFile("/web/index.html")
 	})
 
 	return app

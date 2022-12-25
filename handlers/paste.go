@@ -1,164 +1,140 @@
 package handlers
 
 import (
-	"fmt"
-	"math/rand"
-	"net/http"
 	"time"
 
+	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/models"
 	"github.com/coolguy1771/wastebin/storage"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
-// ResponseHTTP represents response body of this API
-type ResponseHTTP struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data"`
-	Message string      `json:"message"`
-}
+// GetPaste retrieves a paste by its UUID.
+// If the paste has expired or is set to be deleted after reading, it is deleted from the database.
+func GetPaste(c *fiber.Ctx) error {
+	// Read the paste UUID from the URL parameter
+	pasteUUID, err := uuid.Parse(c.Params("uuid"))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
+	}
 
-// GetPasteByID is a function to get a paste by ID
-// @Summary Get paste by ID
-// @Description Get paste by ID
-// @Tags pastes
-// @Accept json
-// @Produce json
-// @Param id path int true "Paste ID"
-// @Success 200 {object} ResponseHTTP{data=[]models.Paste}
-// @Failure 404 {object} ResponseHTTP{}
-// @Failure 503 {object} ResponseHTTP{}
-// @Router /v1/paste/{id} [get]
-func GetPasteByID(c *fiber.Ctx) error {
-	id := c.Params("id")
-	db := storage.DBConn
+	// Retrieve the paste from the database
+	paste := models.Paste{}
+	if err := storage.DBConn.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
+	}
 
-	paste := new(models.Paste)
-	if err := db.Where("paste_ID = ?", id).First(&paste).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			return c.Status(http.StatusNotFound).JSON(ResponseHTTP{
-				Success: false,
-				Message: fmt.Sprintf("Paste with ID %v not found.", id),
-				Data:    nil,
-			})
-		default:
-			return c.Status(http.StatusServiceUnavailable).JSON(ResponseHTTP{
-				Success: false,
-				Message: err.Error(),
-				Data:    nil,
-			})
+	// Check if the paste has expired
+	if time.Now().After(paste.ExpiryTimestamp) {
+		if err := storage.DBConn.Delete(&paste).Error; err != nil {
+			log.Error("Error deleting expired paste from the database", zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting expired paste from the database"})
+		}
+		return c.JSON(map[string]string{"message": "Paste expired and deleted"})
+	}
 
+	// Check if the paste should be deleted after reading
+	if paste.Burn {
+		if err := storage.DBConn.Delete(&paste).Error; err != nil {
+			log.Error("Error deleting paste after reading", zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting paste after reading"})
 		}
 	}
 
-	return c.JSON(ResponseHTTP{
-		Success: true,
-		Message: "Success get paste by ID.",
-		Data:    *paste,
-	})
+	// Return the paste content
+	return c.JSON(paste)
 }
 
-// CreatePaste registers a new paste data
-// @Summary Creates a new paste
-// @Description Crate paste
-// @Tags pastes
-// @Accept json
-// @Produce json
-// @Param paste body models.Paste true "Create paste"
-// @Success 200 {object} ResponseHTTP{data=models.Paste}
-// @Failure 400 {object} ResponseHTTP{}
-// @Router /v1/paste [post]
 func CreatePaste(c *fiber.Ctx) error {
-	db := storage.DBConn
-
-	paste := new(models.Paste)
-	if err := c.BodyParser(&paste); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(ResponseHTTP{
-			Success: false,
-			Message: err.Error(),
-			Data:    nil,
-		})
+	log.Info("CreatePaste called")
+	// Parse the request body
+	var req models.CreatePasteRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": err.Error()})
 	}
-	paste.PasteID = RandomString(8)
+	log.Info("CreatePaste request", zap.Any("request", req))
+	if req.ExpiryTime == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Expiry time cannot be empty"})
+	}
+	// Parse the expiry time in the RFC 3339 format
+	expiryTimestamp, err := time.Parse(time.RFC3339, req.ExpiryTime)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Invalid expiry time format"})
+	}
+	if expiryTimestamp.Before(time.Now()) {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Expiry time must be in the future"})
+	}
 
-	db.Create(paste)
+	// Validate the other fields
+	if req.Content == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Content cannot be empty"})
+	}
+	if !isValidLanguage(req.Language) {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Invalid language"})
+	}
 
-	return c.JSON(ResponseHTTP{
-		Success: true,
-		Message: "Success registered a paste.",
-		Data:    *paste,
-	})
+	log.Debug("Paste request body has been validated", zap.Any("request", req))
+
+	// Generate a UUID for the paste
+	pasteUUID, err := uuid.NewRandom()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": err.Error()})
+	}
+	log.Info("Generated UUID", zap.String("uuid", pasteUUID.String()))
+
+	// Save the paste to the database
+	paste := models.Paste{
+		Content:         req.Content,
+		Burn:            req.Burn,
+		Language:        req.Language,
+		UUID:            pasteUUID,
+		ExpiryTimestamp: expiryTimestamp,
+	}
+	log.Debug("created paste object", zap.Any("paste", paste))
+
+	if err := storage.DBConn.Create(&paste).Error; err != nil {
+		log.Error("Error saving paste to database", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": err.Error()})
+	}
+	log.Info("Paste saved to database")
+	// Return the UUID of the newly created paste in the response body
+	response := map[string]string{
+		"message": "Paste created",
+		"uuid":    pasteUUID.String(),
+	}
+	return c.JSON(response)
 }
 
-// DeletePaste function removes a paste by ID
-// @Summary Remove paste by ID
-// @Description Remove paste by ID
-// @Tags pastes
-// @Accept json
-// @Produce json
-// @Param id path string true "Paste ID"
-// @Success 200 {object} ResponseHTTP{}
-// @Failure 404 {object} ResponseHTTP{}
-// @Failure 503 {object} ResponseHTTP{}
-// @Router /v1/paste/{id} [delete]
 func DeletePaste(c *fiber.Ctx) error {
-	id := c.Params("id")
-	db := storage.DBConn
-
-	paste := new(models.Paste)
-	if err := db.First(&paste, id).Error; err != nil {
-		switch err.Error() {
-		case "record not found":
-			return c.Status(http.StatusNotFound).JSON(ResponseHTTP{
-				Success: false,
-				Message: fmt.Sprintf("Paste with ID %v not found.", id),
-				Data:    nil,
-			})
-		default:
-			return c.Status(http.StatusServiceUnavailable).JSON(ResponseHTTP{
-				Success: false,
-				Message: err.Error(),
-				Data:    nil,
-			})
-
-		}
+	// Read the paste UUID from the URL query string
+	pasteUUID, err := uuid.Parse(c.Query("uuid"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+	// Delete the paste from the database
+	var paste models.Paste
+	if err := storage.DBConn.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).SendString(err.Error())
+	}
+	if err := storage.DBConn.Delete(&paste).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
 
-	db.Delete(&paste)
-
-	return c.JSON(ResponseHTTP{
-		Success: true,
-		Message: "Success deleted paste.",
-		Data:    nil,
-	})
+	return c.SendString("Paste deleted")
 }
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-var src = rand.NewSource(time.Now().UnixNano())
-
-const (
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
-func RandomString(n int) string {
-	b := make([]byte, n)
-	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			b[i] = letterBytes[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
+func isValidLanguage(language string) bool {
+	supportedLanguages := map[string]struct{}{
+		"plaintext":  {},
+		"markdown":   {},
+		"python":     {},
+		"go":         {},
+		"javascript": {},
+		"html":       {},
+		"css":        {},
 	}
-
-	return string(b)
+	_, ok := supportedLanguages[language]
+	return ok
 }
-

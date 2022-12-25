@@ -1,54 +1,49 @@
 <script>
-  import { onMount } from 'svelte'
-  import { HighlightAuto } from 'svelte-highlight'
-  import githubDarkDimmed from 'svelte-highlight/styles/github-dark'
-
   let paste
   let code
   let language
   let id
 
-  onMount(async function () {
-    id = window.location.pathname.split('/')[2]
-    const response = await fetch(`/api/v1/paste/${id}`, {
-      method: 'GET',
-    })
-    const data = await response.json()
-    paste = data.data
-    code = paste.paste
-    language = paste.language
-  })
+  //onMount(async function () {
+  //  id = window.location.pathname.split('/')[2]
+  //  const response = await fetch(`/api/v1/paste/${id}`, {
+  //    method: 'GET',
+  //  })
+  //  const data = await response.json()
+  //  paste = data.data
+  //  code = paste.paste
+  //  language = paste.language
+  //})
+
+  // On event
+  function onEvent(event) {
+    if (event.key == 'n') {
+      window.location.href = '/'
+    } else if (event.key == 'r') {
+      window.location.href = `/paste/${id}?raw=true`
+    } else if (event.key == 'y') {
+      navigator.clipboard.writeText(window.location.href)
+    } else if (event.key == 'd') {
+      window.location.href = `/download/${id}.${extension}`
+    }
+  }
 </script>
 
-<svelte:head>
-  {@html githubDarkDimmed}
-</svelte:head>
+<div>
+  <div>
+    <pre class="code">${paste.code}</pre>
+  </div>
+  <div class="paste-box">
+    <!-- if deleteion is possible -->
+    {#if paste.burn}
+      <a class="punctuation definition tag" href="/api/v1/{id}">del</a> •
+    {/if}
 
-<div class="Header">
-  <div class="Header-item">
-    <a href="/" class="Header-link f4 d-flex flex-items-center">
-      <!-- <%= octicon "mark-github", class: "mr-2", height: 32 %> -->
-      <svg
-        height="32"
-        class="octicon octicon-mark-github mr-2"
-        viewBox="0 0 16 16"
-        version="1.1"
-        width="32"
-        aria-hidden="true"
-        ><path
-          fill-rule="evenodd"
-          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-        /></svg
-      >
-      <span>Wastebin</span>
-    </a>
+    <a class="punctuation definition tag" href="/paste/{id}?dl={paste.extension}">↓</a>
+    <a class="punctuation definition tag" href="/paste/{id}?fmt=raw">raw</a>
+    <a class="punctuation definition tag" href="/">new</a>
   </div>
 </div>
 
-<div>
-  {#if paste}
-    <HighlightAuto {code} />
-  {:else}
-    <h2><span>Loading</span><span class="AnimatedEllipsis" /></h2>
-  {/if}
-</div>
+<style>
+</style>
