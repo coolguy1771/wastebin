@@ -1,10 +1,8 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount } from 'svelte'
   import { HighlightAuto } from 'svelte-highlight'
   import githubDarkDimmed from 'svelte-highlight/styles/github-dark-dimmed'
-  import Clipboard from 'clipboard'
 
-  let clipboard
   let paste = {}
   let errorMessage = ''
 
@@ -24,12 +22,8 @@
     } catch (error) {
       errorMessage = error.message
     }
-    clipboard = new Clipboard('.copy-button')
   })
 
-  onDestroy(() => {
-    clipboard.destroy()
-  })
 
   function downloadPaste() {
     // Create a link to the paste and simulate a click on it to download the paste
