@@ -26,16 +26,25 @@
     }
     clipboard = new Clipboard('.copy-button')
   })
+
   onDestroy(() => {
     clipboard.destroy()
   })
+
+  function downloadPaste() {
+    // Create a link to the paste and simulate a click on it to download the paste
+    const link = document.createElement('a')
+    link.href = `data:text/plain;charset=utf-8,${encodeURIComponent(paste.content)}`
+    link.download = 'paste.txt'
+    link.click()
+  }
 </script>
 
 <svelte:head>
   {@html githubDarkDimmed}
 </svelte:head>
 <div class="buttons">
-  <button id="download-button" class="button" disabled>Download</button>
+  <button id="download-button" class="button" on:click={downloadPaste}>Download</button>
   <button id="copy-button" data-clipboard-text={paste.content} disabled>Copy to clipboard</button>
 </div>
 {#if errorMessage}
