@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/coolguy1771/wastebin/log"
@@ -10,6 +11,42 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
+
+func GetRawPaste(c *fiber.Ctx) error {
+	pasteUUID, err := uuid.Parse(c.Params("uuid"))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
+	}
+
+	// Retrieve the paste from the database
+	paste := models.Paste{}
+	if err := storage.DBConn.First(&paste, "uuid = ?", pasteUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(map[string]string{"error": err.Error()})
+	}
+
+	// Check if the paste has expired
+	if time.Now().After(paste.ExpiryTimestamp) {
+		if err := storage.DBConn.Delete(&paste).Error; err != nil {
+			log.Error("Error deleting expired paste from the database", zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting expired paste from the database"})
+		}
+		return c.JSON(map[string]string{"message": "Paste expired and deleted"})
+	}
+
+	// Check if the paste should be deleted after reading
+	if paste.Burn {
+		if err := storage.DBConn.Delete(&paste).Error; err != nil {
+			log.Error("Error deleting paste after reading", zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).JSON(map[string]string{"error": "Error deleting paste after reading"})
+		}
+	}
+
+	// Set the Content-Type header to the appropriate MIME type for the paste's file extension
+	c.Type("text/plain")
+
+	// Send the raw paste as the response
+	return c.SendString(paste.Content)
+}
 
 // GetPaste retrieves a paste by its UUID.
 // If the paste has expired or is set to be deleted after reading, it is deleted from the database.
@@ -50,7 +87,18 @@ func GetPaste(c *fiber.Ctx) error {
 func CreatePaste(c *fiber.Ctx) error {
 	log.Info("CreatePaste called")
 	// Parse the request body
-	var req models.CreatePasteRequest
+	expireTime, err := strconv.ParseInt(c.FormValue("expires"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": err.Error()})
+	}
+	req := models.CreatePasteRequest{
+		Content:  c.FormValue("text"),
+		Burn:     c.FormValue("burn") == "true",
+		Language: c.FormValue("extension"),
+		// Convert the expires value to an int64 and add it to the current time
+		ExpiryTime: time.Now().Add(time.Duration(expireTime) * time.Minute).Format(time.RFC3339),
+	}
+
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": err.Error()})
 	}
@@ -70,9 +118,6 @@ func CreatePaste(c *fiber.Ctx) error {
 	// Validate the other fields
 	if req.Content == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Content cannot be empty"})
-	}
-	if !isValidLanguage(req.Language) {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]string{"error": "Invalid language"})
 	}
 
 	log.Debug("Paste request body has been validated", zap.Any("request", req))
@@ -123,18 +168,4 @@ func DeletePaste(c *fiber.Ctx) error {
 	}
 
 	return c.SendString("Paste deleted")
-}
-
-func isValidLanguage(language string) bool {
-	supportedLanguages := map[string]struct{}{
-		"plaintext":  {},
-		"markdown":   {},
-		"python":     {},
-		"go":         {},
-		"javascript": {},
-		"html":       {},
-		"css":        {},
-	}
-	_, ok := supportedLanguages[language]
-	return ok
 }
