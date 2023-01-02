@@ -8,7 +8,7 @@ require (
 	github.com/knadh/koanf v1.4.4
 	go.uber.org/zap v1.24.0
 	gorm.io/driver/postgres v1.4.6
-	gorm.io/driver/sqlite v1.4.3
+	gorm.io/driver/sqlite v1.4.4
 	gorm.io/gorm v1.24.3
 )
 
