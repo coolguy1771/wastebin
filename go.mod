@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/gofiber/fiber/v2 v2.40.1
 	github.com/google/uuid v1.3.0
-	github.com/knadh/koanf v1.4.4
+	github.com/knadh/koanf v1.4.5
 	go.uber.org/zap v1.24.0
 	gorm.io/driver/postgres v1.4.6
 	gorm.io/driver/sqlite v1.4.4
