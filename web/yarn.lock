@@ -333,19 +333,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/package@npm:^1.0.1":
-  version: 1.0.1
-  resolution: "@sveltejs/package@npm:1.0.1"
+"@sveltejs/package@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@sveltejs/package@npm:1.0.2"
   dependencies:
     chokidar: ^3.5.3
     kleur: ^4.1.5
     sade: ^1.8.1
-    svelte2tsx: ~0.5.20
+    svelte2tsx: ~0.6.0
   peerDependencies:
     svelte: ^3.44.0
   bin:
     svelte-package: svelte-package.js
-  checksum: 8e1a7771b984b0100e6b8ffb981e64be8fdd8ee0acee4676a4a3e8621104e971e004d1781473ca3599ec23ccf84bdfa730cf6b96b92a1d72c287172d5b306d85
+  checksum: f647589528f313b7f4e8b3146ab301e974d0a9887d34661bc88e684fa1cc7548d2e2836658b0d22109b1c4ec8b55eafaa539d6b7ee617d44c26075e00867b4e8
   languageName: node
   linkType: hard
 
@@ -2574,16 +2574,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"svelte2tsx@npm:~0.5.20":
-  version: 0.5.23
-  resolution: "svelte2tsx@npm:0.5.23"
+"svelte2tsx@npm:~0.6.0":
+  version: 0.6.0
+  resolution: "svelte2tsx@npm:0.6.0"
   dependencies:
     dedent-js: ^1.0.1
     pascal-case: ^3.1.1
   peerDependencies:
-    svelte: ^3.24
-    typescript: ^4.1.2
-  checksum: bcb29c95922984b305cf1278e3d8ccfa03bffe521045980dee4d90e833debaca755d59174548693d67fda8fea7321dc1f2aee303f044b4a7c6db45639de88be0
+    svelte: ^3.55
+    typescript: ^4.9.4
+  checksum: 0d20f08e0d69114cc732002c825bbc9a92377bc97f360b17c2a00fb15be259fd6e9aa74ccfa01eec90ad5fe1f69841f9db1d3a4ba93afea7999c692d1a0ea2e9
   languageName: node
   linkType: hard
 
@@ -2798,7 +2798,7 @@ __metadata:
     "@playwright/test": ^1.29.1
     "@sveltejs/adapter-static": ^1.0.1
     "@sveltejs/kit": ^1.0.9
-    "@sveltejs/package": ^1.0.1
+    "@sveltejs/package": ^1.0.2
     autoprefixer: ^10.4.13
     eslint: ^8.31.0
     eslint-config-prettier: ^8.6.0
