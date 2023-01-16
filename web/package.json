@@ -12,7 +12,7 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "@playwright/test": "^1.29.1",
+    "@playwright/test": "^1.29.2",
     "@sveltejs/adapter-static": "^1.0.4",
     "@sveltejs/kit": "^1.0.9",
     "@sveltejs/package": "^1.0.2",
