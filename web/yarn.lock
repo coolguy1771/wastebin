@@ -307,14 +307,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/kit@npm:^1.2.3":
-  version: 1.2.3
-  resolution: "@sveltejs/kit@npm:1.2.3"
+"@sveltejs/kit@npm:^1.3.5":
+  version: 1.3.5
+  resolution: "@sveltejs/kit@npm:1.3.5"
   dependencies:
     "@sveltejs/vite-plugin-svelte": ^2.0.0
     "@types/cookie": ^0.5.1
     cookie: ^0.5.0
-    devalue: ^4.2.2
+    devalue: ^4.2.3
     esm-env: ^1.0.0
     kleur: ^4.1.5
     magic-string: ^0.27.0
@@ -323,13 +323,13 @@ __metadata:
     set-cookie-parser: ^2.5.1
     sirv: ^2.0.2
     tiny-glob: ^0.2.9
-    undici: 5.15.2
+    undici: 5.16.0
   peerDependencies:
     svelte: ^3.54.0
     vite: ^4.0.0
   bin:
     svelte-kit: svelte-kit.js
-  checksum: 645a18b177b6be129553e82d3c7612fd22014182792da896e79a79873c21a7304ac482a38c7f2aa3d26368b893599618b07eaa38e82cedb8c11c11e50d9b3610
+  checksum: 1b162a23f4ea0a82e6cf28ab8eced5c586c1f9c2584b69bb6ffd8d91d787d20d81deb0e60c5102a6be6a9d60dbadb35527bac9877f777d9e927197098b8dc73b
   languageName: node
   linkType: hard
 
@@ -804,10 +804,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"devalue@npm:^4.2.2":
-  version: 4.2.2
-  resolution: "devalue@npm:4.2.2"
-  checksum: 68446dc824150f6712d8a655174eefe67d0e116dd1a7262f66440a2d0735fe4e1a11c5b8e434cf0245c7411a9239b02ff909a13360f18f7d6ca56b01a9c144d7
+"devalue@npm:^4.2.3":
+  version: 4.2.3
+  resolution: "devalue@npm:4.2.3"
+  checksum: 4062f098c1abddd85f0ddd711a2d6e33aa9c50c87504afe94bd602aca23d29d000cae9873a1c55ae502b42be50046d947897048266896ca692271ab601cbe97a
   languageName: node
   linkType: hard
 
@@ -2745,12 +2745,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:5.15.2":
-  version: 5.15.2
-  resolution: "undici@npm:5.15.2"
+"undici@npm:5.16.0":
+  version: 5.16.0
+  resolution: "undici@npm:5.16.0"
   dependencies:
     busboy: ^1.6.0
-  checksum: e9a81b3ffd110e09fee84db10c5ea4b51895e183d904515f6c110115fe1aeb944b5e015f2bddf1dbf1acf4e306759957fe61fe2b79c760dba6a981770687b560
+  checksum: bc22e797cbf469351713c88af33e65e21952a75f431b78b0e75fb2411426ab38b888ec0761d4b81eadf8f6e8872ed23fb75641cc7319c6a7f08bd083899fa1cc
   languageName: node
   linkType: hard
 
@@ -2858,7 +2858,7 @@ __metadata:
   dependencies:
     "@playwright/test": ^1.29.2
     "@sveltejs/adapter-static": ^1.0.5
-    "@sveltejs/kit": ^1.2.3
+    "@sveltejs/kit": ^1.3.5
     "@sveltejs/package": ^1.0.2
     autoprefixer: ^10.4.13
     eslint: ^8.32.0
