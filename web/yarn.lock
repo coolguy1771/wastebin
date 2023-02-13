@@ -298,12 +298,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/adapter-static@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@sveltejs/adapter-static@npm:2.0.0"
+"@sveltejs/adapter-static@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "@sveltejs/adapter-static@npm:2.0.1"
   peerDependencies:
     "@sveltejs/kit": ^1.5.0
-  checksum: 44cb5f2f2b3af579755915d674735e544d7528e2296aae0550b5e78395ff887b23e90b4babded1f8423e7aa9694664ca089d405606ad6351627335b1dc62b0a4
+  checksum: 910c28a7d2a5dfedebaf26a6c297e589d75c29012d6c021ae21f1e1da7d66445eaa54361ca680ef198a0a84da3445d059392bc14f0619e95d342c8f8b6078d95
   languageName: node
   linkType: hard
 
@@ -2857,7 +2857,7 @@ __metadata:
   resolution: "wastebin@workspace:."
   dependencies:
     "@playwright/test": ^1.30.0
-    "@sveltejs/adapter-static": ^2.0.0
+    "@sveltejs/adapter-static": ^2.0.1
     "@sveltejs/kit": ^1.5.6
     "@sveltejs/package": ^1.0.2
     autoprefixer: ^10.4.13
