@@ -18,10 +18,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Prepare
-        id: prep
-        run: |
-          echo ::set-output name=version::${GITHUB_REF##*/}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
@@ -52,4 +48,4 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/wastebin:${{ steps.prep.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/wastebin:${{ github.sha }}
