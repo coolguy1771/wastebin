@@ -307,29 +307,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/kit@npm:^1.5.6":
-  version: 1.5.6
-  resolution: "@sveltejs/kit@npm:1.5.6"
+"@sveltejs/kit@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "@sveltejs/kit@npm:1.8.0"
   dependencies:
     "@sveltejs/vite-plugin-svelte": ^2.0.0
     "@types/cookie": ^0.5.1
     cookie: ^0.5.0
-    devalue: ^4.2.3
+    devalue: ^4.3.0
     esm-env: ^1.0.0
     kleur: ^4.1.5
-    magic-string: ^0.27.0
+    magic-string: ^0.29.0
     mime: ^3.0.0
     sade: ^1.8.1
     set-cookie-parser: ^2.5.1
     sirv: ^2.0.2
     tiny-glob: ^0.2.9
-    undici: 5.18.0
+    undici: 5.20.0
   peerDependencies:
     svelte: ^3.54.0
     vite: ^4.0.0
   bin:
     svelte-kit: svelte-kit.js
-  checksum: 009bac5dabd5ee013dff70d529b2a105e1bb659662f32aa58c8246f6fcf944f32316ffc2a5b8928f2db9fdeb2a522a6a0d76ecd1597fa6c6abee57989e984b10
+  checksum: ca181bf084d15442365916691ce6f5617eb90c078e2341fa59e934148ddb3df44119bfcf5838c3763719423527f21a953ca67a20228b6e91bdf63640cd889438
   languageName: node
   linkType: hard
 
@@ -804,10 +804,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"devalue@npm:^4.2.3":
-  version: 4.2.3
-  resolution: "devalue@npm:4.2.3"
-  checksum: 4062f098c1abddd85f0ddd711a2d6e33aa9c50c87504afe94bd602aca23d29d000cae9873a1c55ae502b42be50046d947897048266896ca692271ab601cbe97a
+"devalue@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "devalue@npm:4.3.0"
+  checksum: ad9a7d496e0b4f878ecf799bd93250330d226c525e5e5ac709cb63e267f800a5a85de21ad1d32e2981533f99bfc5025e480b1af2fe9d7cef6cd3bb8c55d7b04c
   languageName: node
   linkType: hard
 
@@ -1648,6 +1648,15 @@ __metadata:
   dependencies:
     "@jridgewell/sourcemap-codec": ^1.4.13
   checksum: 273faaa50baadb7a2df6e442eac34ad611304fc08fe16e24fe2e472fd944bfcb73ffb50d2dc972dc04e92784222002af46868cb9698b1be181c81830fd95a13e
+  languageName: node
+  linkType: hard
+
+"magic-string@npm:^0.29.0":
+  version: 0.29.0
+  resolution: "magic-string@npm:0.29.0"
+  dependencies:
+    "@jridgewell/sourcemap-codec": ^1.4.13
+  checksum: 19e5398fcfc44804917127c72ad622c68a19a0a10cbdb8d4f9f9417584a087fe9e117140bfb2463d86743cf1ed9cf4182ae0b0ad1a7536f7fdda257ee4449ffb
   languageName: node
   linkType: hard
 
@@ -2745,12 +2754,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:5.18.0":
-  version: 5.18.0
-  resolution: "undici@npm:5.18.0"
+"undici@npm:5.20.0":
+  version: 5.20.0
+  resolution: "undici@npm:5.20.0"
   dependencies:
     busboy: ^1.6.0
-  checksum: 74e0f357c376c745fcca612481a5742866ae36086ad387e626255f4c4a15fc5357d9d0fa4355271b6a633d50f5556c3e85720844680c44861c66e23afca7245f
+  checksum: 25412a785b2bd0b12f0bb0ec47ef00aa7a611ca0e570cb7af97cffe6a42e0d78e4b15190363a43771e9002defc3c6647c1b2d52201b3f64e2196819db4d150d3
   languageName: node
   linkType: hard
 
@@ -2858,7 +2867,7 @@ __metadata:
   dependencies:
     "@playwright/test": ^1.30.0
     "@sveltejs/adapter-static": ^2.0.1
-    "@sveltejs/kit": ^1.5.6
+    "@sveltejs/kit": ^1.8.0
     "@sveltejs/package": ^1.0.2
     autoprefixer: ^10.4.13
     eslint: ^8.34.0
