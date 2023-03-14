@@ -2662,10 +2662,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"svelte@npm:^3.55.1":
-  version: 3.55.1
-  resolution: "svelte@npm:3.55.1"
-  checksum: ce66391bae68b2055a0a63ee0477e73f036247d4dd5abd5240372d5f4971a452ad29c4ef2c630ab089697429edd61756ef7b764e7597ad7e897ce9f8a9457fec
+"svelte@npm:^3.56.0":
+  version: 3.56.0
+  resolution: "svelte@npm:3.56.0"
+  checksum: d691364416632265dd0bbba23021f5766c5c4f905389978dc73c9c1261141479a7aed9f0bce5e0bde87d7f566e89f18476d95d2299bcac57f165dc7dab3a6095
   languageName: node
   linkType: hard
 
@@ -2881,7 +2881,7 @@ __metadata:
     highlight.js: ^11.7.0
     prettier: ^2.8.4
     prettier-plugin-svelte: ^2.9.0
-    svelte: ^3.55.1
+    svelte: ^3.56.0
     svelte-check: ^3.1.4
     svelte-highlight: ^7.2.0
     svelte-preprocess: ^5.0.1
