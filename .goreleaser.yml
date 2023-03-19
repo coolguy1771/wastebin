@@ -9,10 +9,9 @@ builds:
     binary: "wastebin"
     goarch:
       - "amd64"
+      - "arm64"
     goos:
       - "darwin"
       - "linux"
-      - "freebsd"
-      - "openbsd"
     env:
       - CGO_ENABLED=1

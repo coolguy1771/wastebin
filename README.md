@@ -41,11 +41,11 @@ services:
       - WASTEBIN_DB_NAME=wastebin # Optional, defaults to wastebin
       - WASTEBIN_DB_MAX_IDLE_CONNS=10 # Optional, defaults to 10
       - WASTEBIN_DB_MAX_OPEN_CONNS=50 # Optional, defaults to 50
-      - WASTEBIN_DEV=false # Use this to use a local sqlite database, if you want persistance you will need to specify a volume 
+      - WASTEBIN_DEV=false # Use this to use a local sqlite database, if you want persistance you will need to specify a volume
     ports:
       - "3000:3000"
   postgres:
-    image: postgres:14.5
+    image: postgres:14.7
     restart: always
     enviorment:
       - POSTGRES_PASSWORD="mysecretpassword"
@@ -55,13 +55,6 @@ services:
       - "5432:5432"
 ```
 
-## Known Issues
-
-- Currently pastes aren't deleted after being viewed
-  - The burn toggle on the creation page doesn't do anything yet
-- The CSS doesn't fill the whole page on the creation and view pages
-- The raw view is just an HTML webpage and not a raw file causing issue with cURLing
-- The LOG_LEVEL variable doesn't do anything
 
 ## Bugs and Suggestion
 
