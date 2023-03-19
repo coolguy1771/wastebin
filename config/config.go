@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/knadh/koanf"
+	"github.com/knadh/koanf/v2"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/env"
 	"go.uber.org/zap"
