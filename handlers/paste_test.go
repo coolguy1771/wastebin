@@ -1,8 +1,6 @@
 package handlers_test
 
 import (
-	"bytes"
-	"net/http"
 	"testing"
 )
 
