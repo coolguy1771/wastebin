@@ -1,5 +1,7 @@
 # Wastebin
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/coolguy1771/wastebin)](https://goreportcard.com/report/github.com/coolguy1771/wastebin)
+
 **Wastebin** is a self hosted web service that allows you to share pastes anonymously. Wastebin was designed to be stateless and uses the following tech stack
 
 | Component |  Framework |
@@ -54,7 +56,6 @@ services:
     ports:
       - "5432:5432"
 ```
-
 
 ## Bugs and Suggestion
 

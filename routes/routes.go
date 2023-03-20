@@ -1,46 +1,58 @@
 package routes
 
 import (
+	"net/http"
+	"os"
+	"path/filepath"
+
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/handlers"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/render"
+	"gorm.io/gorm"
 )
 
-// Add routes to the app
-func AddRoutes(app *fiber.App) *fiber.App {
-	app.Use(cors.New())
+var db *gorm.DB
 
-	api := app.Group("/api")
-	v1 := api.Group("/v1", func(c *fiber.Ctx) error {
-		c.JSON(fiber.Map{
-			"message": "🐣 v1",
-		})
-		return c.Next()
-	})
+// AddRoutes adds all the routes to the router
+func AddRoutes(r *chi.Mux) {
+	r.Use(middleware.Logger)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
 
-	v1.Get("/paste/:uuid", handlers.GetPaste)
-	v1.Post("/paste", handlers.CreatePaste)
-	v1.Delete("/paste/:uuid", handlers.DeletePaste)
+	r.Use(render.SetContentType(render.ContentTypeJSON))
 
-	// Serve Single Page application
-	if config.Conf.Dev {
-		app.Static("/", "./web/build/")
-	} else {
-		app.Static("/", "/web/")
-	}
-
-	app.Get("/", serveSPA)
-	app.Get("/paste/:uuid", serveSPA)
-	app.Get("/paste/:uuid/raw", handlers.GetRawPaste)
-
-	return app
+	r.Mount("/api", api())
+	r.Mount("/", web())
 }
 
-func serveSPA(c *fiber.Ctx) error {
+func api() chi.Router {
+	r := chi.NewRouter()
+	r.Mount("/v1", v1())
+
+	return r
+}
+
+func v1() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/paste/{uuid}", handlers.GetPaste(db))
+	r.Post("/paste", handlers.CreatePaste(db))
+
+	return r
+}
+
+func web() chi.Router {
+	r := chi.NewRouter()
+
+	workDir, _ := os.Getwd()
+	filesDir := http.Dir(filepath.Join(workDir, "/web"))
 	if config.Conf.Dev {
-		return c.SendFile("./web/build/index.html")
-	} else {
-		return c.SendFile("/web/index.html")
+		filesDir = http.Dir(filepath.Join(workDir, "/web/build"))
 	}
+
+	// Serve static files
+	r.Handle("/*", http.FileServer(filesDir))
+	return r
 }

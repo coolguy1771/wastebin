@@ -8,13 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type CreatePasteRequest struct {
-	Content    string
-	Burn       bool
-	Language   string
-	ExpiryTime string
-}
-
 type Paste struct {
 	Content         string    `json:"content" example:"Paste A"`
 	Burn            bool      `json:"burn" example:"false"`

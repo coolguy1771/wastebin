@@ -1,16 +1,19 @@
 package main
 
 import (
+	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/storage"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/coolguy1771/wastebin/routes"
-	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
 
@@ -29,36 +32,51 @@ func main() {
 		log.Fatal("Error migrating the database", zap.Error(err))
 	}
 
-	// Create new fiber instance
-	app := fiber.New(fiber.Config{
-		Prefork:               false,
-		CaseSensitive:         true,
-		StrictRouting:         false,
-		ServerHeader:          "Fiber",
-		AppName:               "Wastebin",
-		DisableStartupMessage: true,
-	})
+	r := chi.NewRouter()
 
-	// Load routes
-	routes.AddRoutes(app)
+	routes.AddRoutes(r)
 
 	log.Info("Starting the server", zap.String("port", config.Conf.WebappPort))
 
-	// Create a channel to receive OS signals
-	sigChan := make(chan os.Signal, 1)
+	// The HTTP Server
+	server := &http.Server{Addr: ":" + config.Conf.WebappPort, Handler: r}
 
-	// Register the channel to receive SIGINT (Ctrl+C) and SIGTERM signals
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	// Server run context
+	serverCtx, serverStopCtx := context.WithCancel(context.Background())
+
+	// Listen for syscall signals for process to interrupt/quit
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// Use a separate goroutine to listen for signals and shutdown the server gracefully
 	go func() {
-		sig := <-sigChan
-		log.Info("Received signal to shutdown server", zap.String("signal", sig.String()))
-		app.Shutdown()
+		<-sig
+
+		// Shutdown signal with grace period of 30 seconds
+		shutdownCtx, _ := context.WithTimeout(serverCtx, 30*time.Second)
+
+		go func() {
+			log.Info("Received signal to shutdown server", zap.String("signal", shutdownCtx.Err().Error()))
+			<-shutdownCtx.Done()
+			if shutdownCtx.Err() == context.DeadlineExceeded {
+				log.Fatal("graceful shutdown timed out.. forcing exit.")
+			}
+		}()
+
+		// Trigger graceful shutdown
+		err := server.Shutdown(shutdownCtx)
+		if err != nil {
+			log.Fatal("error", zap.Error(err))
+		}
+		serverStopCtx()
 	}()
 
-	// Listen on the user specified port defaulting to 3000
-	if err := app.Listen(":" + config.Conf.WebappPort); err != nil {
-		log.Fatal("Error starting the server", zap.Error(err))
+	// Run the server
+	err = server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatal("error", zap.Error(err))
 	}
+
+	// Wait for server context to be stopped
+	<-serverCtx.Done()
 }
