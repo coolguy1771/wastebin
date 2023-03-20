@@ -1,6 +1,6 @@
 module github.com/coolguy1771/wastebin
 
-go 1.19
+go 1.20
 
 require (
 	github.com/gofiber/fiber/v2 v2.42.0
