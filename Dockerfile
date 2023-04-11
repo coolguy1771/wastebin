@@ -13,7 +13,7 @@ COPY web .
 RUN yarn && yarn build
 
 # BUILD BACKEND
-FROM golang:1.20.2-alpine as backend
+FROM golang:1.20.3-alpine as backend
 
 ENV GO111MODULE=on \
     CGO_ENABLED=1 \
