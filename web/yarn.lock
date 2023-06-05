@@ -336,9 +336,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/kit@npm:^1.20.0":
-  version: 1.20.0
-  resolution: "@sveltejs/kit@npm:1.20.0"
+"@sveltejs/kit@npm:^1.20.1":
+  version: 1.20.1
+  resolution: "@sveltejs/kit@npm:1.20.1"
   dependencies:
     "@sveltejs/vite-plugin-svelte": ^2.4.1
     "@types/cookie": ^0.5.1
@@ -358,7 +358,7 @@ __metadata:
     vite: ^4.0.0
   bin:
     svelte-kit: svelte-kit.js
-  checksum: bc4e520021058f0bb2b6d2cc0571f1a87db4e32cfa06e0b78376c26fc513cf725f8c42f62c379e18f5aee6169475807dc8693760b3a4f2e88168f5f54e264b3f
+  checksum: 40b87ec391c2da2fd46e138739282a820d5048b417c82ca24cb49e7ae339953dd1633ac341a0c6ed7273ba163cbacf6e431f750d329183caa7f92419bf0e5360
   languageName: node
   linkType: hard
 
@@ -2741,7 +2741,7 @@ __metadata:
   dependencies:
     "@playwright/test": ^1.34.3
     "@sveltejs/adapter-static": ^2.0.2
-    "@sveltejs/kit": ^1.20.0
+    "@sveltejs/kit": ^1.20.1
     "@sveltejs/package": ^2.0.2
     autoprefixer: ^10.4.14
     eslint: ^8.41.0
