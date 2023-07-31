@@ -343,9 +343,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/kit@npm:^1.21.0":
-  version: 1.21.0
-  resolution: "@sveltejs/kit@npm:1.21.0"
+"@sveltejs/kit@npm:^1.22.4":
+  version: 1.22.4
+  resolution: "@sveltejs/kit@npm:1.22.4"
   dependencies:
     "@sveltejs/vite-plugin-svelte": ^2.4.1
     "@types/cookie": ^0.5.1
@@ -364,7 +364,7 @@ __metadata:
     vite: ^4.0.0
   bin:
     svelte-kit: svelte-kit.js
-  checksum: c0810e3a843f8d4c9969cf8da15640a5a43f9be25556da84c99c8702e859a624a2a41767ee077646145e97e0057c2f017201ed3cb8e53376a7cd25d6a71ca89b
+  checksum: d1393ae4bb3e892e8d4b4baf3284164b66aedac53570705366923b09498457140d4c415d1ad5e9db374bdb41937a7cbee0fd927eaaf871734673a92ff9b213af
   languageName: node
   linkType: hard
 
@@ -2649,11 +2649,11 @@ __metadata:
 
 "typescript@patch:typescript@^5.0.3#~builtin<compat/typescript>":
   version: 5.0.4
-  resolution: "typescript@patch:typescript@npm%3A5.0.4#~builtin<compat/typescript>::version=5.0.4&hash=85af82"
+  resolution: "typescript@patch:typescript@npm%3A5.0.4#~builtin<compat/typescript>::version=5.0.4&hash=b5f058"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: bb309d320c59a26565fb3793dba550576ab861018ff3fd1b7fccabbe46ae4a35546bc45f342c0a0b6f265c801ccdf64ffd68f548f117ceb7f0eac4b805cd52a9
+  checksum: d26b6ba97b6d163c55dbdffd9bbb4c211667ebebc743accfeb2c8c0154aace7afd097b51165a72a5bad2cf65a4612259344ff60f8e642362aa1695c760d303ac
   languageName: node
   linkType: hard
 
@@ -2769,7 +2769,7 @@ __metadata:
   dependencies:
     "@playwright/test": ^1.35.1
     "@sveltejs/adapter-static": ^2.0.2
-    "@sveltejs/kit": ^1.21.0
+    "@sveltejs/kit": ^1.22.4
     "@sveltejs/package": ^2.1.0
     autoprefixer: ^10.4.14
     eslint: ^8.44.0
