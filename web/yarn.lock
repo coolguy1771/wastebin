@@ -2443,9 +2443,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"svelte-check@npm:^3.4.4":
-  version: 3.4.4
-  resolution: "svelte-check@npm:3.4.4"
+"svelte-check@npm:^3.5.0":
+  version: 3.5.0
+  resolution: "svelte-check@npm:3.5.0"
   dependencies:
     "@jridgewell/trace-mapping": ^0.3.17
     chokidar: ^3.4.1
@@ -2453,13 +2453,13 @@ __metadata:
     import-fresh: ^3.2.1
     picocolors: ^1.0.0
     sade: ^1.7.4
-    svelte-preprocess: ^5.0.3
+    svelte-preprocess: ^5.0.4
     typescript: ^5.0.3
   peerDependencies:
     svelte: ^3.55.0 || ^4.0.0-next.0 || ^4.0.0
   bin:
     svelte-check: bin/svelte-check
-  checksum: 64000f22eb9a9d1495bc37a0698deef7a422d81c5f84df4cb296811c814324475f2885dc6345fee913cd6a4b33b472752740831fcd2f840679f927b1d3027802
+  checksum: c62da075d1ca3bcccb6953ca6636e2035e2af29afc8699a6de832982cd446c1c237856cebcb12ce6a7255a10af5d544972c9fb6b57649a6cfbd758ceab3dd622
   languageName: node
   linkType: hard
 
@@ -2478,52 +2478,6 @@ __metadata:
   peerDependencies:
     svelte: ">=3.19.0"
   checksum: af2e5c356ed6467d6567ce1b908bc077c9d08a89f3ffda81e63989c1c3f374a88b1b67453e86e3674320aa10e7cdf42a10dc551900997b627b4702db447f2bf3
-  languageName: node
-  linkType: hard
-
-"svelte-preprocess@npm:^5.0.3":
-  version: 5.0.3
-  resolution: "svelte-preprocess@npm:5.0.3"
-  dependencies:
-    "@types/pug": ^2.0.6
-    detect-indent: ^6.1.0
-    magic-string: ^0.27.0
-    sorcery: ^0.11.0
-    strip-indent: ^3.0.0
-  peerDependencies:
-    "@babel/core": ^7.10.2
-    coffeescript: ^2.5.1
-    less: ^3.11.3 || ^4.0.0
-    postcss: ^7 || ^8
-    postcss-load-config: ^2.1.0 || ^3.0.0 || ^4.0.0
-    pug: ^3.0.0
-    sass: ^1.26.8
-    stylus: ^0.55.0
-    sugarss: ^2.0.0 || ^3.0.0 || ^4.0.0
-    svelte: ^3.23.0
-    typescript: ">=3.9.5 || ^4.0.0 || ^5.0.0"
-  peerDependenciesMeta:
-    "@babel/core":
-      optional: true
-    coffeescript:
-      optional: true
-    less:
-      optional: true
-    postcss:
-      optional: true
-    postcss-load-config:
-      optional: true
-    pug:
-      optional: true
-    sass:
-      optional: true
-    stylus:
-      optional: true
-    sugarss:
-      optional: true
-    typescript:
-      optional: true
-  checksum: fedec5f8ce90ed11c3408d739e1403b0df1d32206702e3607043a6d06e6007d2f3d9efc6c261b2c2cb4f6e48311e2bad12d42f1de05acc4f908100735e29fac9
   languageName: node
   linkType: hard
 
@@ -2798,7 +2752,7 @@ __metadata:
     prettier: ^2.8.8
     prettier-plugin-svelte: ^2.10.1
     svelte: ^3.59.1
-    svelte-check: ^3.4.4
+    svelte-check: ^3.5.0
     svelte-highlight: ^7.3.0
     svelte-preprocess: ^5.0.4
     vite: ^4.4.9
