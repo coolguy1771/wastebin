@@ -368,19 +368,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/package@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@sveltejs/package@npm:2.1.0"
+"@sveltejs/package@npm:^2.2.1":
+  version: 2.2.1
+  resolution: "@sveltejs/package@npm:2.2.1"
   dependencies:
     chokidar: ^3.5.3
     kleur: ^4.1.5
     sade: ^1.8.1
-    svelte2tsx: ~0.6.0
+    semver: ^7.5.3
+    svelte2tsx: ~0.6.19
   peerDependencies:
     svelte: ^3.44.0 || ^4.0.0
   bin:
     svelte-package: svelte-package.js
-  checksum: f0435a27e9492dc86cbca0c0c2aeb8e5446e1c9a2a7ffb94a230fbc040ac19b9b941316a0797d0556127a0fa7ddb32e884554f5608707091031c2a884e7cbf7f
+  checksum: 9eecf522ef0ca3584710d4b18a8aef36976be02f13b111c9f189315b6efd725cad8c39557deb1142ea0d7fe23ec53d8c5af82e1b1b9f42374a12e9a9cec3959c
   languageName: node
   linkType: hard
 
@@ -2276,6 +2277,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"semver@npm:^7.5.3":
+  version: 7.5.4
+  resolution: "semver@npm:7.5.4"
+  dependencies:
+    lru-cache: ^6.0.0
+  bin:
+    semver: bin/semver.js
+  checksum: 12d8ad952fa353b0995bf180cdac205a4068b759a140e5d3c608317098b3575ac2f1e09182206bf2eb26120e1c0ed8fb92c48c592f6099680de56bb071423ca3
+  languageName: node
+  linkType: hard
+
 "set-blocking@npm:^2.0.0":
   version: 2.0.0
   resolution: "set-blocking@npm:2.0.0"
@@ -2527,16 +2539,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"svelte2tsx@npm:~0.6.0":
-  version: 0.6.0
-  resolution: "svelte2tsx@npm:0.6.0"
+"svelte2tsx@npm:~0.6.19":
+  version: 0.6.20
+  resolution: "svelte2tsx@npm:0.6.20"
   dependencies:
     dedent-js: ^1.0.1
     pascal-case: ^3.1.1
   peerDependencies:
-    svelte: ^3.55
-    typescript: ^4.9.4
-  checksum: 0d20f08e0d69114cc732002c825bbc9a92377bc97f360b17c2a00fb15be259fd6e9aa74ccfa01eec90ad5fe1f69841f9db1d3a4ba93afea7999c692d1a0ea2e9
+    svelte: ^3.55 || ^4.0.0-next.0 || ^4.0
+    typescript: ^4.9.4 || ^5.0.0
+  checksum: e04d64c2072b060ef478f46c8d683d1041e1f0193e65bd1ff1f7d7e826414472dfc1caf6286bbb06f15699a8aa22c1906bda2a525f6bb8a3e413856281c53eb8
   languageName: node
   linkType: hard
 
@@ -2743,7 +2755,7 @@ __metadata:
     "@playwright/test": ^1.37.0
     "@sveltejs/adapter-static": ^2.0.3
     "@sveltejs/kit": ^1.22.6
-    "@sveltejs/package": ^2.1.0
+    "@sveltejs/package": ^2.2.1
     autoprefixer: ^10.4.15
     eslint: ^8.47.0
     eslint-config-prettier: ^8.8.0
