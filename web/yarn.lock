@@ -368,9 +368,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/package@npm:^2.2.1":
-  version: 2.2.1
-  resolution: "@sveltejs/package@npm:2.2.1"
+"@sveltejs/package@npm:^2.2.2":
+  version: 2.2.2
+  resolution: "@sveltejs/package@npm:2.2.2"
   dependencies:
     chokidar: ^3.5.3
     kleur: ^4.1.5
@@ -381,7 +381,7 @@ __metadata:
     svelte: ^3.44.0 || ^4.0.0
   bin:
     svelte-package: svelte-package.js
-  checksum: 9eecf522ef0ca3584710d4b18a8aef36976be02f13b111c9f189315b6efd725cad8c39557deb1142ea0d7fe23ec53d8c5af82e1b1b9f42374a12e9a9cec3959c
+  checksum: deb30100deb62b3b6a6f319e28f04a557fa58a1f87cef7bf94fdab9eae8d3051b27b5ec01a64eff87e0530eeafb0086ede5e09d64b0cad00f7442ba7c764dce5
   languageName: node
   linkType: hard
 
@@ -2755,7 +2755,7 @@ __metadata:
     "@playwright/test": ^1.37.1
     "@sveltejs/adapter-static": ^2.0.3
     "@sveltejs/kit": ^1.23.0
-    "@sveltejs/package": ^2.2.1
+    "@sveltejs/package": ^2.2.2
     autoprefixer: ^10.4.15
     eslint: ^8.48.0
     eslint-config-prettier: ^9.0.0
