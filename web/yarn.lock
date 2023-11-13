@@ -2554,6 +2554,52 @@ __metadata:
   languageName: node
   linkType: hard
 
+"svelte-preprocess@npm:^5.1.0":
+  version: 5.1.0
+  resolution: "svelte-preprocess@npm:5.1.0"
+  dependencies:
+    "@types/pug": ^2.0.6
+    detect-indent: ^6.1.0
+    magic-string: ^0.27.0
+    sorcery: ^0.11.0
+    strip-indent: ^3.0.0
+  peerDependencies:
+    "@babel/core": ^7.10.2
+    coffeescript: ^2.5.1
+    less: ^3.11.3 || ^4.0.0
+    postcss: ^7 || ^8
+    postcss-load-config: ^2.1.0 || ^3.0.0 || ^4.0.0
+    pug: ^3.0.0
+    sass: ^1.26.8
+    stylus: ^0.55.0
+    sugarss: ^2.0.0 || ^3.0.0 || ^4.0.0
+    svelte: ^3.23.0 || ^4.0.0-next.0 || ^4.0.0 || ^5.0.0-next.0
+    typescript: ">=3.9.5 || ^4.0.0 || ^5.0.0"
+  peerDependenciesMeta:
+    "@babel/core":
+      optional: true
+    coffeescript:
+      optional: true
+    less:
+      optional: true
+    postcss:
+      optional: true
+    postcss-load-config:
+      optional: true
+    pug:
+      optional: true
+    sass:
+      optional: true
+    stylus:
+      optional: true
+    sugarss:
+      optional: true
+    typescript:
+      optional: true
+  checksum: 25aa2fd3622510880be12afa10ec8adb1bd3646c3c3be4d5c15fa4fe75265bac10bfdc729ae2f3ee4be2f72d14a7838d6c8da93ab05b9772c914a6e18359c325
+  languageName: node
+  linkType: hard
+
 "svelte2tsx@npm:~0.6.19":
   version: 0.6.20
   resolution: "svelte2tsx@npm:0.6.20"
@@ -2791,7 +2837,7 @@ __metadata:
     svelte: ^3.59.1
     svelte-check: ^3.5.2
     svelte-highlight: ^7.4.1
-    svelte-preprocess: ^5.0.4
+    svelte-preprocess: ^5.1.0
     vite: ^4.5.0
   languageName: unknown
   linkType: soft
