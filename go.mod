@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/gofiber/fiber/v2 v2.51.0
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/knadh/koanf/providers/confmap v0.1.0
 	github.com/knadh/koanf/providers/env v0.1.0
 	github.com/knadh/koanf/v2 v2.0.1
