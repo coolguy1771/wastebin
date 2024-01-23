@@ -462,20 +462,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/package@npm:^2.2.2":
-  version: 2.2.2
-  resolution: "@sveltejs/package@npm:2.2.2"
+"@sveltejs/package@npm:^2.2.6":
+  version: 2.2.6
+  resolution: "@sveltejs/package@npm:2.2.6"
   dependencies:
     chokidar: ^3.5.3
     kleur: ^4.1.5
     sade: ^1.8.1
-    semver: ^7.5.3
-    svelte2tsx: ~0.6.19
+    semver: ^7.5.4
+    svelte2tsx: ~0.7.0
   peerDependencies:
-    svelte: ^3.44.0 || ^4.0.0
+    svelte: ^3.44.0 || ^4.0.0 || ^5.0.0-next.1
   bin:
     svelte-package: svelte-package.js
-  checksum: deb30100deb62b3b6a6f319e28f04a557fa58a1f87cef7bf94fdab9eae8d3051b27b5ec01a64eff87e0530eeafb0086ede5e09d64b0cad00f7442ba7c764dce5
+  checksum: f358b5e298ebbb5e8d18dd5aaf6826902268de0612a8e09442c41ff01d575640a9a3522c6c6cb4353c37bb929e8208d43db9db2ea3e449da6219725a72819d2f
   languageName: node
   linkType: hard
 
@@ -2454,7 +2454,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.5.3":
+"semver@npm:^7.5.4":
   version: 7.5.4
   resolution: "semver@npm:7.5.4"
   dependencies:
@@ -2709,16 +2709,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"svelte2tsx@npm:~0.6.19":
-  version: 0.6.20
-  resolution: "svelte2tsx@npm:0.6.20"
+"svelte2tsx@npm:~0.7.0":
+  version: 0.7.0
+  resolution: "svelte2tsx@npm:0.7.0"
   dependencies:
     dedent-js: ^1.0.1
     pascal-case: ^3.1.1
   peerDependencies:
-    svelte: ^3.55 || ^4.0.0-next.0 || ^4.0
+    svelte: ^3.55 || ^4.0.0-next.0 || ^4.0 || ^5.0.0-next.0
     typescript: ^4.9.4 || ^5.0.0
-  checksum: e04d64c2072b060ef478f46c8d683d1041e1f0193e65bd1ff1f7d7e826414472dfc1caf6286bbb06f15699a8aa22c1906bda2a525f6bb8a3e413856281c53eb8
+  checksum: c6628b8fa9a52b84d7d126f57131f4e3dd32e163ccd53c1fcd0984e3791cd2ab41d790fb8067f468635adc9e04f8e1b968e5c56fa8053a934566115b78712635
   languageName: node
   linkType: hard
 
@@ -2935,7 +2935,7 @@ __metadata:
     "@playwright/test": ^1.41.1
     "@sveltejs/adapter-static": ^2.0.3
     "@sveltejs/kit": ^1.27.6
-    "@sveltejs/package": ^2.2.2
+    "@sveltejs/package": ^2.2.6
     autoprefixer: ^10.4.16
     eslint: ^8.56.0
     eslint-config-prettier: ^9.0.0
