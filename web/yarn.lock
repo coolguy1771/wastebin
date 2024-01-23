@@ -2645,12 +2645,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"svelte-highlight@npm:^7.4.1":
-  version: 7.4.1
-  resolution: "svelte-highlight@npm:7.4.1"
+"svelte-highlight@npm:^7.4.8":
+  version: 7.4.8
+  resolution: "svelte-highlight@npm:7.4.8"
   dependencies:
     highlight.js: 11.9.0
-  checksum: 3b6c17b838cbca3ec717cc719f5a4cbea86f145a51c975586b68a8df8a2458b32aefecb7ebc3916f3aed7cdb63e39ce17e6a72d816cd1f8bd600f2b34d200b07
+  checksum: 42d3327a4e5efb05a8ee8a03c9c4903d4a19051be7092c7da4ee30b9bfbdfb5e7735972a95b32e4cdf264a1e0206e0c408d93303a4f0c365d046a83803711c17
   languageName: node
   linkType: hard
 
@@ -2945,7 +2945,7 @@ __metadata:
     prettier-plugin-svelte: ^2.10.1
     svelte: ^3.59.1
     svelte-check: ^3.6.2
-    svelte-highlight: ^7.4.1
+    svelte-highlight: ^7.4.8
     svelte-preprocess: ^5.1.1
     vite: ^5.0.11
   languageName: unknown
