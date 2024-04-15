@@ -490,11 +490,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/package@npm:^2.2.6":
-  version: 2.2.6
-  resolution: "@sveltejs/package@npm:2.2.6"
+"@sveltejs/package@npm:^2.3.1":
+  version: 2.3.1
+  resolution: "@sveltejs/package@npm:2.3.1"
   dependencies:
-    chokidar: ^3.5.3
+    chokidar: ^3.6.0
     kleur: ^4.1.5
     sade: ^1.8.1
     semver: ^7.5.4
@@ -503,7 +503,7 @@ __metadata:
     svelte: ^3.44.0 || ^4.0.0 || ^5.0.0-next.1
   bin:
     svelte-package: svelte-package.js
-  checksum: f358b5e298ebbb5e8d18dd5aaf6826902268de0612a8e09442c41ff01d575640a9a3522c6c6cb4353c37bb929e8208d43db9db2ea3e449da6219725a72819d2f
+  checksum: cdfee1d85617b5f227f0dd0bf7fd51b2fbe378b3f55fc5c9c58057583c21ed6ab2467dc3eba5fab4bdbe9e0a4c2a86d5ed393139f200f9c6453ff615d6b5d6d5
   languageName: node
   linkType: hard
 
@@ -821,7 +821,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chokidar@npm:^3.4.1, chokidar@npm:^3.5.3":
+"chokidar@npm:^3.4.1":
   version: 3.5.3
   resolution: "chokidar@npm:3.5.3"
   dependencies:
@@ -837,6 +837,25 @@ __metadata:
     fsevents:
       optional: true
   checksum: b49fcde40176ba007ff361b198a2d35df60d9bb2a5aab228279eb810feae9294a6b4649ab15981304447afe1e6ffbf4788ad5db77235dc770ab777c6e771980c
+  languageName: node
+  linkType: hard
+
+"chokidar@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "chokidar@npm:3.6.0"
+  dependencies:
+    anymatch: ~3.1.2
+    braces: ~3.0.2
+    fsevents: ~2.3.2
+    glob-parent: ~5.1.2
+    is-binary-path: ~2.1.0
+    is-glob: ~4.0.1
+    normalize-path: ~3.0.0
+    readdirp: ~3.6.0
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  checksum: d2f29f499705dcd4f6f3bbed79a9ce2388cf530460122eed3b9c48efeab7a4e28739c6551fd15bec9245c6b9eeca7a32baa64694d64d9b6faeb74ddb8c4a413d
   languageName: node
   linkType: hard
 
@@ -3038,7 +3057,7 @@ __metadata:
     "@playwright/test": ^1.41.1
     "@sveltejs/adapter-static": ^3.0.1
     "@sveltejs/kit": ^1.27.6
-    "@sveltejs/package": ^2.2.6
+    "@sveltejs/package": ^2.3.1
     autoprefixer: ^10.4.19
     eslint: ^8.56.0
     eslint-config-prettier: ^9.1.0
