@@ -4,7 +4,7 @@ ARG TARGETPLATFORM
 ARG TARGETVARIANT=""
 
 # BUILD FRONTEND
-FROM node:21 as frontend
+FROM node:22 as frontend
 
 WORKDIR /build
 
