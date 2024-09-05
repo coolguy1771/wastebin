@@ -542,11 +542,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/package@npm:^2.2.6":
-  version: 2.2.6
-  resolution: "@sveltejs/package@npm:2.2.6"
+"@sveltejs/package@npm:^2.3.4":
+  version: 2.3.4
+  resolution: "@sveltejs/package@npm:2.3.4"
   dependencies:
-    chokidar: "npm:^3.5.3"
+    chokidar: "npm:^3.6.0"
     kleur: "npm:^4.1.5"
     sade: "npm:^1.8.1"
     semver: "npm:^7.5.4"
@@ -555,7 +555,7 @@ __metadata:
     svelte: ^3.44.0 || ^4.0.0 || ^5.0.0-next.1
   bin:
     svelte-package: svelte-package.js
-  checksum: 8/f358b5e298ebbb5e8d18dd5aaf6826902268de0612a8e09442c41ff01d575640a9a3522c6c6cb4353c37bb929e8208d43db9db2ea3e449da6219725a72819d2f
+  checksum: 10c0/887d268fe946985fd1b9059fc8821acc4d2ed206743088f8897d5135e622569a8e22c37e257e548fb991815ab1691233f2ce9eea909a66aaba7afc76b891d48d
   languageName: node
   linkType: hard
 
@@ -860,7 +860,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chokidar@npm:^3.4.1, chokidar@npm:^3.5.3":
+"chokidar@npm:^3.4.1":
   version: 3.5.3
   resolution: "chokidar@npm:3.5.3"
   dependencies:
@@ -876,6 +876,25 @@ __metadata:
     fsevents:
       optional: true
   checksum: 8/b49fcde40176ba007ff361b198a2d35df60d9bb2a5aab228279eb810feae9294a6b4649ab15981304447afe1e6ffbf4788ad5db77235dc770ab777c6e771980c
+  languageName: node
+  linkType: hard
+
+"chokidar@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "chokidar@npm:3.6.0"
+  dependencies:
+    anymatch: "npm:~3.1.2"
+    braces: "npm:~3.0.2"
+    fsevents: "npm:~2.3.2"
+    glob-parent: "npm:~5.1.2"
+    is-binary-path: "npm:~2.1.0"
+    is-glob: "npm:~4.0.1"
+    normalize-path: "npm:~3.0.0"
+    readdirp: "npm:~3.6.0"
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  checksum: 10c0/8361dcd013f2ddbe260eacb1f3cb2f2c6f2b0ad118708a343a5ed8158941a39cb8fb1d272e0f389712e74ee90ce8ba864eece9e0e62b9705cb468a2f6d917462
   languageName: node
   linkType: hard
 
@@ -3119,7 +3138,7 @@ __metadata:
     "@playwright/test": "npm:^1.41.1"
     "@sveltejs/adapter-static": "npm:^3.0.1"
     "@sveltejs/kit": "npm:^2.5.26"
-    "@sveltejs/package": "npm:^2.2.6"
+    "@sveltejs/package": "npm:^2.3.4"
     autoprefixer: "npm:^10.4.19"
     eslint: "npm:^9.9.1"
     eslint-config-prettier: "npm:^9.1.0"
