@@ -509,9 +509,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/kit@npm:^2.5.18":
-  version: 2.5.18
-  resolution: "@sveltejs/kit@npm:2.5.18"
+"@sveltejs/kit@npm:^2.5.26":
+  version: 2.5.26
+  resolution: "@sveltejs/kit@npm:2.5.26"
   dependencies:
     "@types/cookie": "npm:^0.6.0"
     cookie: "npm:^0.6.0"
@@ -526,12 +526,12 @@ __metadata:
     sirv: "npm:^2.0.4"
     tiny-glob: "npm:^0.2.9"
   peerDependencies:
-    "@sveltejs/vite-plugin-svelte": ^3.0.0
+    "@sveltejs/vite-plugin-svelte": ^3.0.0 || ^4.0.0-next.1
     svelte: ^4.0.0 || ^5.0.0-next.0
     vite: ^5.0.3
   bin:
     svelte-kit: svelte-kit.js
-  checksum: 10/4cb91857105bb19094bd3fdef5f99fe964c1d7cd51df6ca938603f88d6b8ca9cea454455342946cb593ce85c4c3b7633ad97f9f0e069667ce3d7ca6fe112b782
+  checksum: 10c0/37a53577ed0fc5e13eb5a2e8545dd9c98a3ce040581948af81c85e472fe4ffadf1344ada6db2104628f9e2e641a61502bb8ce5d4c1582948c1ef0b3f820edc9a
   languageName: node
   linkType: hard
 
@@ -3125,7 +3125,7 @@ __metadata:
   dependencies:
     "@playwright/test": "npm:^1.41.1"
     "@sveltejs/adapter-static": "npm:^3.0.1"
-    "@sveltejs/kit": "npm:^2.5.18"
+    "@sveltejs/kit": "npm:^2.5.26"
     "@sveltejs/package": "npm:^2.2.6"
     autoprefixer: "npm:^10.4.19"
     eslint: "npm:^8.56.0"
