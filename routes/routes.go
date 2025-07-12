@@ -32,14 +32,14 @@ func initChiRouter(obs *observability.Provider) *chi.Mux {
 	}
 
 	// Security middleware stack
-	r.Use(handlers.SecurityHeadersMiddleware)              // Add comprehensive security headers
+	r.Use(handlers.SecurityHeadersMiddleware)                              // Add comprehensive security headers
 	r.Use(handlers.RequestSizeLimitMiddleware(config.Conf.MaxRequestSize)) // Global request size limits
-	r.Use(handlers.SecurityAuditMiddleware)               // Security audit logging
-	r.Use(handlers.BasicAuthMiddleware)                   // Optional basic authentication
-	r.Use(handlers.CSRFProtectionMiddleware)              // CSRF protection for web forms
+	r.Use(handlers.SecurityAuditMiddleware)                                // Security audit logging
+	r.Use(handlers.BasicAuthMiddleware)                                    // Optional basic authentication
+	r.Use(handlers.CSRFProtectionMiddleware)                               // CSRF protection for web forms
 
-	r.Use(middleware.Logger) // Log the start and end of each request with the elapsed processing time
-	r.Use(middleware.Recoverer)              // Recover from panics without crashing server
+	r.Use(middleware.Logger)    // Log the start and end of each request with the elapsed processing time
+	r.Use(middleware.Recoverer) // Recover from panics without crashing server
 	r.Use(middleware.Heartbeat("/healthz"))
 
 	// Add rate limiting

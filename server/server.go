@@ -152,7 +152,7 @@ func (s *Server) startWithGracefulShutdown() error {
 	if s.config.TLSEnabled {
 		protocol = "HTTPS"
 	}
-	
+
 	s.logger.Info("Starting server",
 		zap.String("protocol", protocol),
 		zap.String("port", s.config.WebappPort),

@@ -19,7 +19,7 @@ import (
 )
 
 // CSRFProtectionMiddleware enforces CSRF protection on state-changing HTTP requests using the double-submit cookie pattern.
-// 
+//
 // This middleware validates CSRF tokens for non-GET/HEAD/OPTIONS requests, except for API endpoints authenticated via API key or Authorization header. It retrieves or creates a session ID cookie, extracts the CSRF token from the request, and verifies it using HMAC with a configured secret key. Requests failing validation receive a 403 Forbidden response.
 func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +54,7 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 				respondWithError(w, http.StatusInternalServerError, "Session management failure")
 				return
 			}
-			
+
 			if !validateCSRFToken(token, sessionID, config.Conf.CSRFKey) {
 				log.Warn("CSRF validation failed",
 					zap.String("remote_addr", r.RemoteAddr),
@@ -217,9 +217,9 @@ func getRealIP(r *http.Request) string {
 }
 
 const (
-	csrfTokenTTL = 24 * time.Hour // Token expires after 24 hours
+	csrfTokenTTL      = 24 * time.Hour // Token expires after 24 hours
 	sessionCookieName = "wastebin_session"
-	csrfCookieName = "wastebin_csrf"
+	csrfCookieName    = "wastebin_csrf"
 )
 
 // getOrCreateSessionID retrieves the session ID from the session cookie or generates and sets a new secure session ID cookie if none exists.
@@ -238,7 +238,7 @@ func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) (string, error
 		log.Error("Failed to generate secure session ID", zap.Error(err))
 		return "", fmt.Errorf("failed to generate session ID: %w", err)
 	}
-	
+
 	// Set session cookie (HttpOnly, Secure in production, SameSite)
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -268,12 +268,12 @@ func generateSecureRandomString(length int) (string, error) {
 func generateCSRFToken(sessionID, secretKey string) string {
 	timestamp := time.Now().Unix()
 	message := fmt.Sprintf("%s:%d", sessionID, timestamp)
-	
+
 	// Create HMAC with SHA256
 	h := hmac.New(sha256.New, []byte(secretKey))
 	h.Write([]byte(message))
 	signature := hex.EncodeToString(h.Sum(nil))
-	
+
 	// Format: sessionID:timestamp:signature
 	token := fmt.Sprintf("%s:%d:%s", sessionID, timestamp, signature)
 	return base64.StdEncoding.EncodeToString([]byte(token))
@@ -346,7 +346,7 @@ func GetCSRFToken(w http.ResponseWriter, r *http.Request) string {
 		log.Error("Failed to get or create session ID for CSRF token generation", zap.Error(err))
 		return "" // Fail securely by returning empty token
 	}
-	
+
 	token := generateCSRFToken(sessionID, config.Conf.CSRFKey)
 
 	// Also set as cookie for double-submit pattern
@@ -354,7 +354,7 @@ func GetCSRFToken(w http.ResponseWriter, r *http.Request) string {
 		Name:     csrfCookieName,
 		Value:    token,
 		Path:     "/",
-		HttpOnly: false, // Needs to be accessible by JavaScript
+		HttpOnly: false,            // Needs to be accessible by JavaScript
 		Secure:   !config.Conf.Dev, // Only require HTTPS in production
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(csrfTokenTTL.Seconds()),

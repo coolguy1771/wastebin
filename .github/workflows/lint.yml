@@ -35,7 +35,7 @@ jobs:
         uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
         with:
           version: latest
-          args: --timeout=5m --out-format=text,json:golangci-lint-report.json,sarif:golangci-lint-report.sarif
+          args: --timeout=5m --output.json.path golangci-lint-report.json --output.sarif.path golangci-lint-report.sarif
           only-new-issues: true
           skip-cache: false
           skip-pkg-cache: false
