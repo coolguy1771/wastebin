@@ -9,7 +9,7 @@ ARG TARGETVARIANT=""
 # ================================
 # Frontend Build Stage
 # ================================
-FROM node:22-alpine AS frontend
+FROM node:24-alpine AS frontend
 
 # Install security updates and cleanup in one layer
 RUN apk update && apk upgrade && apk add --no-cache \
