@@ -99,7 +99,7 @@ export function useApiMutation(): UseApiReturn<void> & {
     async (operation: () => Promise<void>): Promise<void> => {
       await api.execute(operation);
     },
-    [api]
+    [api.execute]
   );
 
   return {

@@ -24,6 +24,7 @@ var (
 	ErrContentTooLarge    = errors.New("content exceeds maximum size")
 	ErrInvalidContentType = errors.New("invalid content type")
 	ErrInvalidLanguage    = errors.New("invalid or unsupported language")
+	ErrInvalidUTF8        = errors.New("content contains invalid UTF-8 encoding")
 )
 
 // respondWithError sends a JSON error response

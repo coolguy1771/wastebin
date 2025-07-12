@@ -54,7 +54,10 @@ export const renderWithProviders = (ui: ReactElement, options: CustomRenderOptio
 };
 
 // Form testing utilities
-export const fillForm = async (user: ReturnType<typeof userEvent.setup>, fields: Record<string, string | boolean>) => {
+export const fillForm = async (
+  user: ReturnType<typeof userEvent.setup>,
+  fields: Record<string, string | boolean>
+) => {
   for (const [name, value] of Object.entries(fields)) {
     const field = document.querySelector(`[name="${name}"]`) as HTMLElement;
 

@@ -38,12 +38,12 @@ type Config struct {
 	TLSKeyFile  string `koanf:"TLS_KEY_FILE"`
 
 	// Security configuration
-	AllowedOrigins    string `koanf:"ALLOWED_ORIGINS"`
-	RequireAuth       bool   `koanf:"REQUIRE_AUTH"`
-	AuthUsername      string `koanf:"AUTH_USERNAME"`
-	AuthPassword      string `koanf:"AUTH_PASSWORD"`
-	CSRFKey           string `koanf:"CSRF_KEY"`
-	MaxRequestSize    int64  `koanf:"MAX_REQUEST_SIZE"`
+	AllowedOrigins string `koanf:"ALLOWED_ORIGINS"`
+	RequireAuth    bool   `koanf:"REQUIRE_AUTH"`
+	AuthUsername   string `koanf:"AUTH_USERNAME"`
+	AuthPassword   string `koanf:"AUTH_PASSWORD"`
+	CSRFKey        string `koanf:"CSRF_KEY"`
+	MaxRequestSize int64  `koanf:"MAX_REQUEST_SIZE"`
 
 	// Logger configuration
 	LogLevel string `koanf:"LOG_LEVEL"`

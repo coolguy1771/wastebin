@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"html"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -98,7 +97,7 @@ var (
 		regexp.MustCompile(`(?i)vbscript:`),
 		regexp.MustCompile(`(?i)on\w+\s*=`), // onclick, onload, etc.
 	}
-	
+
 	// Allowed languages for syntax highlighting
 	allowedLanguages = map[string]bool{
 		"":           true, // plain text
@@ -167,7 +166,11 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	sanitizedContent, err := sanitizeContent(req.Content)
 	if err != nil {
 		log.Error("Error sanitizing content", zap.Error(err))
-		respondWithError(w, http.StatusBadRequest, "Invalid content")
+		if err == ErrInvalidUTF8 {
+			respondWithError(w, http.StatusBadRequest, "Content contains invalid UTF-8 encoding")
+		} else {
+			respondWithError(w, http.StatusBadRequest, "Invalid content")
+		}
 		return
 	}
 	req.Content = sanitizedContent
@@ -296,13 +299,12 @@ func sanitizeContent(content string) (string, error) {
 	// Validate UTF-8 encoding
 	if !utf8.ValidString(content) {
 		log.Warn("Invalid UTF-8 content detected")
-		// Try to make it valid UTF-8 by escaping
-		content = html.EscapeString(content)
+		return "", ErrInvalidUTF8
 	}
 
 	// Remove null bytes which can cause security issues
 	content = strings.ReplaceAll(content, "\x00", "")
-	
+
 	// Remove carriage returns that might cause CRLF injection
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	content = strings.ReplaceAll(content, "\r", "\n")
@@ -325,10 +327,10 @@ func validateLanguage(language string) bool {
 	if language == "" {
 		return true // empty language is allowed (plain text)
 	}
-	
+
 	// Convert to lowercase for case-insensitive comparison
 	language = strings.ToLower(strings.TrimSpace(language))
-	
+
 	return allowedLanguages[language]
 }
 

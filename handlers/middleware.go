@@ -1,11 +1,17 @@
 package handlers
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/log"
@@ -28,18 +34,23 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Generate and validate CSRF token for web forms
+		// Generate and validate CSRF token for web forms using double-submit cookie pattern
 		if config.Conf.CSRFKey != "" {
+			// Get token from header or form
 			token := r.Header.Get("X-CSRF-Token")
 			if token == "" {
 				token = r.FormValue("csrf_token")
 			}
 
-			if !validateCSRFToken(token, config.Conf.CSRFKey) {
+			// Get session ID from cookie or generate one
+			sessionID := getOrCreateSessionID(w, r)
+			
+			if !validateCSRFToken(token, sessionID, config.Conf.CSRFKey) {
 				log.Warn("CSRF validation failed",
 					zap.String("remote_addr", r.RemoteAddr),
 					zap.String("user_agent", r.UserAgent()),
-					zap.String("path", r.URL.Path))
+					zap.String("path", r.URL.Path),
+					zap.String("session_id", sessionID))
 				respondWithError(w, http.StatusForbidden, "CSRF validation failed")
 				return
 			}
@@ -199,22 +210,136 @@ func getRealIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-func validateCSRFToken(token, key string) bool {
-	if token == "" || key == "" {
+const (
+	csrfTokenTTL = 24 * time.Hour // Token expires after 24 hours
+	sessionCookieName = "wastebin_session"
+	csrfCookieName = "wastebin_csrf"
+)
+
+// getOrCreateSessionID gets the session ID from cookie or creates a new one
+func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) string {
+	// Try to get existing session ID from cookie
+	if cookie, err := r.Cookie(sessionCookieName); err == nil {
+		if cookie.Value != "" {
+			return cookie.Value
+		}
+	}
+
+	// Generate new session ID
+	sessionID := generateSecureRandomString(32)
+	
+	// Set session cookie (HttpOnly, Secure in production, SameSite)
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    sessionID,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   !config.Conf.Dev, // Only require HTTPS in production
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(csrfTokenTTL.Seconds()),
+	})
+
+	return sessionID
+}
+
+// generateSecureRandomString generates a cryptographically secure random string
+func generateSecureRandomString(length int) string {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp-based generation if crypto/rand fails
+		return fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(bytes)
+}
+
+// generateCSRFToken creates a secure CSRF token using HMAC with timestamp
+func generateCSRFToken(sessionID, secretKey string) string {
+	timestamp := time.Now().Unix()
+	message := fmt.Sprintf("%s:%d", sessionID, timestamp)
+	
+	// Create HMAC with SHA256
+	h := hmac.New(sha256.New, []byte(secretKey))
+	h.Write([]byte(message))
+	signature := hex.EncodeToString(h.Sum(nil))
+	
+	// Format: sessionID:timestamp:signature
+	token := fmt.Sprintf("%s:%d:%s", sessionID, timestamp, signature)
+	return base64.StdEncoding.EncodeToString([]byte(token))
+}
+
+// validateCSRFToken validates a CSRF token using HMAC and checks expiration
+func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
+	if tokenStr == "" || sessionID == "" || secretKey == "" {
 		return false
 	}
 
-	// Simple HMAC-based validation
-	// In production, you might want to use a more sophisticated token system
-	expectedToken := generateCSRFToken(key)
-	return subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) == 1
+	// Decode base64 token
+	tokenBytes, err := base64.StdEncoding.DecodeString(tokenStr)
+	if err != nil {
+		log.Warn("Invalid base64 CSRF token", zap.Error(err))
+		return false
+	}
+
+	token := string(tokenBytes)
+	parts := strings.Split(token, ":")
+	if len(parts) != 3 {
+		log.Warn("Invalid CSRF token format")
+		return false
+	}
+
+	tokenSessionID := parts[0]
+	timestampStr := parts[1]
+	providedSignature := parts[2]
+
+	// Verify session ID matches
+	if subtle.ConstantTimeCompare([]byte(tokenSessionID), []byte(sessionID)) != 1 {
+		log.Warn("CSRF token session ID mismatch")
+		return false
+	}
+
+	// Parse timestamp
+	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+	if err != nil {
+		log.Warn("Invalid CSRF token timestamp", zap.Error(err))
+		return false
+	}
+
+	// Check if token has expired
+	tokenTime := time.Unix(timestamp, 0)
+	if time.Since(tokenTime) > csrfTokenTTL {
+		log.Warn("CSRF token expired", zap.Time("token_time", tokenTime))
+		return false
+	}
+
+	// Recreate expected signature
+	message := fmt.Sprintf("%s:%d", sessionID, timestamp)
+	h := hmac.New(sha256.New, []byte(secretKey))
+	h.Write([]byte(message))
+	expectedSignature := hex.EncodeToString(h.Sum(nil))
+
+	// Compare signatures using constant time comparison
+	return subtle.ConstantTimeCompare([]byte(providedSignature), []byte(expectedSignature)) == 1
 }
 
-func generateCSRFToken(key string) string {
-	// Generate a simple token based on the key
-	// In production, this should include timestamp and be more secure
-	token := make([]byte, 32)
-	copy(token, []byte(key))
-	rand.Read(token[len(key):])
-	return base64.StdEncoding.EncodeToString(token)
+// GetCSRFToken generates a new CSRF token for the current session (for use in templates/frontend)
+func GetCSRFToken(w http.ResponseWriter, r *http.Request) string {
+	if config.Conf.CSRFKey == "" {
+		return ""
+	}
+
+	sessionID := getOrCreateSessionID(w, r)
+	token := generateCSRFToken(sessionID, config.Conf.CSRFKey)
+
+	// Also set as cookie for double-submit pattern
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: false, // Needs to be accessible by JavaScript
+		Secure:   !config.Conf.Dev, // Only require HTTPS in production
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(csrfTokenTTL.Seconds()),
+	})
+
+	return token
 }
