@@ -1,82 +1,292 @@
 name: Release
 
 on:
-    push:
-        tags:
-            - v*.*.*
+  push:
+    tags:
+      - v*.*.*
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+env:
+  GO_VERSION: '1.24'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-    # Docker container release job
-    container-release:
-        runs-on: ubuntu-latest
-        if: "!contains(github.event.head_commit.message, '[ci-skip]')"
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Prepare Version
-              id: prep
-              run: echo "version=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+          fi
 
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: all
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: v1.2.3"
+            exit 1
+          fi
+          echo "✅ Valid version: $VERSION"
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-              with:
-                  install: true
-                  version: latest
-                  driver-opts: image=moby/buildkit:latest
+  test:
+    name: Run Tests
+    needs: [validate]
+    uses: ./.github/workflows/test.yml
 
-            - name: Login to GitHub Container Registry
-              if: github.event_name != 'pull_request'
-              uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Build and Push Docker Image
-              if: github.event_name != 'pull_request'
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  file: ./Dockerfile
-                  platforms: linux/amd64,linux/arm64
-                  push: true
-                  tags: |
-                      ghcr.io/${{ github.repository_owner }}/wastebin:latest
-                      ghcr.io/${{ github.repository_owner }}/wastebin:${{ steps.prep.outputs.version }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
 
-    # Go binary release job using GoReleaser
-    go-release:
-        runs-on: ubuntu-latest
-        if: "!contains(github.event.head_commit.message, '[ci-skip]')"
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+      - name: Install Dependencies
+        working-directory: ./web
+        run: npm ci
 
-            - name: Set up Go Environment
-              uses: actions/setup-go@v5
-              with:
-                  go-version: 1.22
+      - name: Build Frontend
+        working-directory: ./web
+        run: npm run build
 
-            - name: Cache Go Modules
-              uses: actions/cache@v3
-              with:
-                  path: |
-                      ~/.cache/go-build
-                      ~/go/pkg/mod
-                  key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-                  restore-keys: |
-                      ${{ runner.os }}-go-
+      - name: Upload Frontend Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: web/dist/
+          retention-days: 1
 
-            - name: Run GoReleaser
-              uses: goreleaser/goreleaser-action@v6
-              with:
-                  version: latest
-                  args: release --clean
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  container-build:
+    name: Build Release Container
+    runs-on: ${{ matrix.runner }}
+    needs: [validate, test, build-frontend]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm64
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: web/dist/
+
+      - name: Prepare platform variables
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=release-${{ env.PLATFORM_PAIR }}
+          cache-to: type=gha,mode=max,scope=release-${{ env.PLATFORM_PAIR }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  container-release:
+    name: Release Container Manifest
+    runs-on: ubuntu-latest
+    needs: [validate, container-build]
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.merge.outputs.digest }}
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: release-digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.validate.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.validate.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.validate.outputs.version }}
+            type=raw,value=latest
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        id: merge
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          
+          # Get the manifest digest for the latest tag
+          LATEST_TAG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
+          MANIFEST_DIGEST=$(docker buildx imagetools inspect $LATEST_TAG --format '{{ .Manifest.Digest }}')
+          echo "digest=$MANIFEST_DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Inspect image
+        run: |
+          echo "Created multi-platform manifest for:"
+          echo "${{ steps.meta.outputs.tags }}" | while read tag; do
+            echo "  - $tag"
+            docker buildx imagetools inspect "$tag"
+          done
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.merge.outputs.digest }}
+          push-to-registry: true
+
+  go-release:
+    name: Release Binaries
+    runs-on: ubuntu-latest
+    needs: [validate, test]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, container-release, go-release]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Release Notes
+        id: release-notes
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          
+          echo "## What's Changed" > release-notes.md
+          echo "" >> release-notes.md
+          
+          if [ -n "$PREV_TAG" ]; then
+            echo "### Commits since $PREV_TAG:" >> release-notes.md
+            git log --oneline $PREV_TAG..HEAD --pretty=format:"- %s (%h)" >> release-notes.md
+          else
+            echo "### All commits:" >> release-notes.md
+            git log --oneline --pretty=format:"- %s (%h)" >> release-notes.md
+          fi
+          
+          echo "" >> release-notes.md
+          echo "## Docker Images" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION#v}\`" >> release-notes.md
+          echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> release-notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          name: Release ${{ needs.validate.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
