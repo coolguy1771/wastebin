@@ -57,12 +57,12 @@ if (config.isDevelopment && config.debugMode) {
 }
 
 // Export individual configs for convenience
-export const { 
-  apiBaseUrl, 
-  apiTimeout, 
-  enableDarkMode, 
-  enableAnalytics, 
-  debugMode, 
-  isDevelopment, 
-  isProduction 
+export const {
+  apiBaseUrl,
+  apiTimeout,
+  enableDarkMode,
+  enableAnalytics,
+  debugMode,
+  isDevelopment,
+  isProduction,
 } = config;

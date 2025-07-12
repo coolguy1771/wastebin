@@ -17,23 +17,23 @@ import Alert from '@mui/material/Alert';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 // Use simpler style approach for build compatibility
 const lightStyle = {
-  'hljs': {
+  hljs: {
     display: 'block' as const,
     overflowX: 'auto' as const,
     padding: '0.5em',
     background: '#f5f5f5',
-    color: '#333'
-  }
+    color: '#333',
+  },
 };
 
 const darkStyle = {
-  'hljs': {
+  hljs: {
     display: 'block' as const,
-    overflowX: 'auto' as const,  
+    overflowX: 'auto' as const,
     padding: '0.5em',
     background: '#2b2b2b',
-    color: '#f8f8f8'
-  }
+    color: '#f8f8f8',
+  },
 };
 import { useApi } from '../hooks/useApi';
 import { pasteAPI, type PasteDetails } from '../services/api';
@@ -67,23 +67,12 @@ const PastePage: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <ErrorDisplay
-        error={error}
-        onRetry={retry}
-        title="Failed to load paste"
-      />
-    );
+    return <ErrorDisplay error={error} onRetry={retry} title="Failed to load paste" />;
   }
 
   if (!paste) {
     return (
-      <ErrorDisplay
-        error="Paste not found"
-        title="Not Found"
-        severity="info"
-        showRetry={false}
-      />
+      <ErrorDisplay error="Paste not found" title="Not Found" severity="info" showRetry={false} />
     );
   }
 
@@ -140,54 +129,52 @@ const PastePage: React.FC = () => {
 
   return (
     <>
-      <Box sx={{ 
-        height: '100%',
-        display: 'flex',
-        flexDirection: { xs: 'column', lg: 'row' },
-        gap: 3,
-        p: { xs: 2, md: 3, lg: 4 },
-      }}>
-        {/* Main Content Area */}
-        <Box sx={{ 
-          flex: 1,
+      <Box
+        sx={{
+          height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-        }}>
-          {/* Content Card */}
-          <Card sx={{ 
+          flexDirection: { xs: 'column', lg: 'row' },
+          gap: 3,
+          p: { xs: 2, md: 3, lg: 4 },
+        }}
+      >
+        {/* Main Content Area */}
+        <Box
+          sx={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
-          }}>
+          }}
+        >
+          {/* Content Card */}
+          <Card
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+            }}
+          >
             <CardHeader
               avatar={<CodeIcon />}
               title={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <Typography variant="h6">
-                    Paste Content
-                  </Typography>
-                  <Chip 
-                    label={getLanguageDisplayName(paste.language)} 
+                  <Typography variant="h6">Paste Content</Typography>
+                  <Chip
+                    label={getLanguageDisplayName(paste.language)}
                     size="small"
                     icon={<CodeIcon fontSize="small" />}
                   />
                   {paste.burn && (
-                    <Chip 
-                      label="Burn after read" 
-                      color="warning" 
+                    <Chip
+                      label="Burn after read"
+                      color="warning"
                       size="small"
                       icon={<SecurityIcon fontSize="small" />}
                     />
                   )}
-                  {isExpired && (
-                    <Chip 
-                      label="Expired" 
-                      color="error" 
-                      size="small"
-                    />
-                  )}
+                  {isExpired && <Chip label="Expired" color="error" size="small" />}
                 </Box>
               }
               subheader={
@@ -219,8 +206,8 @@ const PastePage: React.FC = () => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="View raw">
-                    <IconButton 
-                      onClick={() => window.open(`/paste/${id}/raw`, '_blank')} 
+                    <IconButton
+                      onClick={() => window.open(`/paste/${id}/raw`, '_blank')}
                       size="small"
                     >
                       <OpenInNewIcon />
@@ -230,29 +217,33 @@ const PastePage: React.FC = () => {
               }
               sx={{ pb: 1 }}
             />
-            <CardContent sx={{ 
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              p: 0,
-              '&:last-child': { pb: 0 },
-              overflow: 'hidden',
-            }}>
-              <Box sx={{ 
+            <CardContent
+              sx={{
                 flex: 1,
-                overflow: 'auto',
-                '& pre': {
-                  margin: 0,
-                  fontSize: isMobile ? '12px' : '14px',
-                  fontFamily: 'JetBrains Mono, Monaco, Consolas, monospace',
-                  lineHeight: 1.6,
-                },
-                '& code': {
-                  fontFamily: 'JetBrains Mono, Monaco, Consolas, monospace',
-                }
-              }}>
-                <SyntaxHighlighter 
-                  language={paste.language} 
+                display: 'flex',
+                flexDirection: 'column',
+                p: 0,
+                '&:last-child': { pb: 0 },
+                overflow: 'hidden',
+              }}
+            >
+              <Box
+                sx={{
+                  flex: 1,
+                  overflow: 'auto',
+                  '& pre': {
+                    margin: 0,
+                    fontSize: isMobile ? '12px' : '14px',
+                    fontFamily: 'JetBrains Mono, Monaco, Consolas, monospace',
+                    lineHeight: 1.6,
+                  },
+                  '& code': {
+                    fontFamily: 'JetBrains Mono, Monaco, Consolas, monospace',
+                  },
+                }}
+              >
+                <SyntaxHighlighter
+                  language={paste.language}
                   style={syntaxTheme}
                   showLineNumbers
                   customStyle={{
@@ -302,39 +293,41 @@ const PastePage: React.FC = () => {
         </Box>
 
         {/* Sidebar with metadata */}
-        <Paper sx={{ 
-          width: { xs: '100%', lg: '300px' },
-          p: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
-          height: 'fit-content',
-        }}>
+        <Paper
+          sx={{
+            width: { xs: '100%', lg: '300px' },
+            p: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            height: 'fit-content',
+          }}
+        >
           <Box>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
               <SecurityIcon fontSize="small" />
               Paste Information
             </Typography>
-            
+
             <Stack spacing={2}>
               <Box>
                 <Typography variant="body2" color="text.secondary">
                   Language
                 </Typography>
-                <Typography variant="body1">
-                  {getLanguageDisplayName(paste.language)}
-                </Typography>
+                <Typography variant="body1">{getLanguageDisplayName(paste.language)}</Typography>
               </Box>
-              
+
               <Box>
                 <Typography variant="body2" color="text.secondary">
                   Created
                 </Typography>
-                <Typography variant="body1">
-                  {formatTimestamp(paste.created_at)}
-                </Typography>
+                <Typography variant="body1">{formatTimestamp(paste.created_at)}</Typography>
               </Box>
-              
+
               {paste.expiry_timestamp && (
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -345,7 +338,7 @@ const PastePage: React.FC = () => {
                   </Typography>
                 </Box>
               )}
-              
+
               <Box>
                 <Typography variant="body2" color="text.secondary">
                   Size
@@ -354,7 +347,7 @@ const PastePage: React.FC = () => {
                   {paste.content.length.toLocaleString()} characters
                 </Typography>
               </Box>
-              
+
               <Box>
                 <Typography variant="body2" color="text.secondary">
                   Lines
@@ -368,25 +361,24 @@ const PastePage: React.FC = () => {
 
           {/* Security Features */}
           <Box>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
               <SecurityIcon fontSize="small" />
               Security
             </Typography>
-            
+
             <Stack spacing={1}>
-              <Chip 
-                label="End-to-end encrypted" 
-                size="small" 
-                icon={<SecurityIcon />} 
-                variant="outlined" 
+              <Chip
+                label="End-to-end encrypted"
+                size="small"
+                icon={<SecurityIcon />}
+                variant="outlined"
               />
               {paste.burn && (
-                <Chip 
-                  label="Burns after reading" 
-                  size="small" 
-                  color="warning"
-                  variant="outlined" 
-                />
+                <Chip label="Burns after reading" size="small" color="warning" variant="outlined" />
               )}
             </Stack>
           </Box>

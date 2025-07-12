@@ -1,32 +1,25 @@
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react-swc'
-import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react-swc';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
-  
+
   test: {
     // Test environment
     environment: 'jsdom',
-    
+
     // Setup files
     setupFiles: ['./src/test/setup.ts'],
-    
+
     // Global test utilities
     globals: true,
-    
+
     // Coverage configuration
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'src/test/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        'dist/',
-        'coverage/',
-      ],
+      exclude: ['node_modules/', 'src/test/', '**/*.d.ts', '**/*.config.*', 'dist/', 'coverage/'],
       thresholds: {
         global: {
           branches: 80,
@@ -36,31 +29,23 @@ export default defineConfig({
         },
       },
     },
-    
+
     // Test file patterns
-    include: [
-      'src/**/*.{test,spec}.{js,ts,jsx,tsx}',
-    ],
-    
+    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+
     // Exclude patterns
-    exclude: [
-      'node_modules/',
-      'dist/',
-      '.idea/',
-      '.git/',
-      '.cache/',
-    ],
-    
+    exclude: ['node_modules/', 'dist/', '.idea/', '.git/', '.cache/'],
+
     // Test timeout
     testTimeout: 10000,
-    
+
     // Hook timeout
     hookTimeout: 10000,
-    
+
     // Reporters
     reporter: ['verbose'],
   },
-  
+
   // Path resolution (same as main vite config)
   resolve: {
     alias: {
@@ -75,4 +60,4 @@ export default defineConfig({
       '@test': fileURLToPath(new URL('./src/test', import.meta.url)),
     },
   },
-})
+});

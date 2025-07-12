@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo,
@@ -70,19 +70,10 @@ export class ErrorBoundary extends Component<Props, State> {
             </Alert>
 
             <Box sx={{ mb: 3 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={this.handleRetry}
-                sx={{ mr: 2 }}
-              >
+              <Button variant="contained" color="primary" onClick={this.handleRetry} sx={{ mr: 2 }}>
                 Try Again
               </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={this.handleReload}
-              >
+              <Button variant="outlined" color="secondary" onClick={this.handleReload}>
                 Reload Page
               </Button>
             </Box>
@@ -130,7 +121,7 @@ export const withErrorBoundary = <P extends object>(
   );
 
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  
+
   return WrappedComponent;
 };
 

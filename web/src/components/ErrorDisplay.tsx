@@ -70,10 +70,8 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
           },
         }}
       >
-        {(title || getDefaultTitle()) && (
-          <AlertTitle>{title || getDefaultTitle()}</AlertTitle>
-        )}
-        
+        {(title || getDefaultTitle()) && <AlertTitle>{title || getDefaultTitle()}</AlertTitle>}
+
         <Typography variant="body2" sx={{ mb: showRetry && onRetry ? 2 : 0 }}>
           {error}
         </Typography>
@@ -112,8 +110,8 @@ export const NetworkErrorDisplay: React.FC<{ onRetry?: () => void }> = ({ onRetr
   />
 );
 
-export const NotFoundErrorDisplay: React.FC<{ resourceName?: string }> = ({ 
-  resourceName = 'resource' 
+export const NotFoundErrorDisplay: React.FC<{ resourceName?: string }> = ({
+  resourceName = 'resource',
 }) => (
   <ErrorDisplay
     error={`The requested ${resourceName} could not be found. It may have been deleted or the link may be incorrect.`}
@@ -123,9 +121,9 @@ export const NotFoundErrorDisplay: React.FC<{ resourceName?: string }> = ({
   />
 );
 
-export const ValidationErrorDisplay: React.FC<{ 
-  errors: string[]; 
-  onDismiss?: () => void 
+export const ValidationErrorDisplay: React.FC<{
+  errors: string[];
+  onDismiss?: () => void;
 }> = ({ errors, onDismiss: _onDismiss }) => (
   <ErrorDisplay
     error={errors.join(', ')}

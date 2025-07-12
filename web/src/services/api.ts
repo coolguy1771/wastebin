@@ -84,7 +84,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}): Promise
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     let errorData: ApiError;
-    
+
     try {
       errorData = await response.json();
     } catch {
@@ -94,12 +94,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
       };
     }
 
-    throw new APIError(
-      errorData.error,
-      response.status,
-      errorData.code,
-      errorData.details
-    );
+    throw new APIError(errorData.error, response.status, errorData.code, errorData.details);
   }
 
   // Handle empty responses (like for raw content)
@@ -162,7 +157,7 @@ export const pasteAPI = {
   getRaw: async (uuid: string): Promise<string> => {
     return apiRequest<string>(`/paste/${uuid}/raw`, {
       headers: {
-        'Accept': 'text/plain',
+        Accept: 'text/plain',
       },
     });
   },

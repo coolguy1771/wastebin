@@ -53,7 +53,9 @@ body {
 }
 
 /* Monospace font improvements */
-pre, code, .monospace {
+pre,
+code,
+.monospace {
   font-family: 'JetBrains Mono', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
   font-variant-ligatures: none;
   font-feature-settings: 'liga' 0;
@@ -107,7 +109,9 @@ button {
   background-color: var(--button-bg-dark);
   color: inherit; /* Inherit text color */
   cursor: pointer;
-  transition: border-color 0.25s, background-color 0.25s; /* Smooth transition for hover */
+  transition:
+    border-color 0.25s,
+    background-color 0.25s; /* Smooth transition for hover */
 }
 
 button:hover {

@@ -90,9 +90,7 @@ class PerformanceMonitor {
 }
 
 // Global performance monitor instance
-export const performanceMonitor = new PerformanceMonitor(
-  process.env.NODE_ENV === 'development'
-);
+export const performanceMonitor = new PerformanceMonitor(process.env.NODE_ENV === 'development');
 
 // Web Vitals monitoring
 export interface WebVitals {
@@ -105,13 +103,13 @@ export interface WebVitals {
 
 // Collect Web Vitals
 export const collectWebVitals = (): Promise<WebVitals> => {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const vitals: WebVitals = {};
 
     // First Contentful Paint
-    new PerformanceObserver((list) => {
+    new PerformanceObserver(list => {
       const entries = list.getEntries();
-      entries.forEach((entry) => {
+      entries.forEach(entry => {
         if (entry.name === 'first-contentful-paint') {
           vitals.fcp = entry.startTime;
         }
@@ -119,14 +117,14 @@ export const collectWebVitals = (): Promise<WebVitals> => {
     }).observe({ entryTypes: ['paint'] });
 
     // Largest Contentful Paint
-    new PerformanceObserver((list) => {
+    new PerformanceObserver(list => {
       const entries = list.getEntries();
       const lastEntry = entries[entries.length - 1];
       vitals.lcp = lastEntry.startTime;
     }).observe({ entryTypes: ['largest-contentful-paint'] });
 
     // First Input Delay
-    new PerformanceObserver((list) => {
+    new PerformanceObserver(list => {
       const entries = list.getEntries();
       entries.forEach((entry: any) => {
         vitals.fid = entry.processingStart - entry.startTime;
@@ -135,7 +133,7 @@ export const collectWebVitals = (): Promise<WebVitals> => {
 
     // Cumulative Layout Shift
     let clsValue = 0;
-    new PerformanceObserver((list) => {
+    new PerformanceObserver(list => {
       const entries = list.getEntries();
       entries.forEach((entry: any) => {
         if (!entry.hadRecentInput) {
@@ -176,7 +174,7 @@ export const logBundleInfo = (): void => {
   const modules = performance.getEntriesByType('module');
   if (modules.length > 0) {
     console.group('📦 Module Loading Performance');
-    modules.forEach((module) => {
+    modules.forEach(module => {
       console.log(`${module.name}: ${module.duration?.toFixed(2)}ms`);
     });
     console.groupEnd();
@@ -184,17 +182,17 @@ export const logBundleInfo = (): void => {
 
   // Log resource loading
   const resources = performance.getEntriesByType('resource');
-  const jsResources = resources.filter((r) => r.name.endsWith('.js'));
-  const cssResources = resources.filter((r) => r.name.endsWith('.css'));
+  const jsResources = resources.filter(r => r.name.endsWith('.js'));
+  const cssResources = resources.filter(r => r.name.endsWith('.css'));
 
   console.group('🎯 Resource Loading Performance');
   console.log(`JavaScript files: ${jsResources.length}`);
   console.log(`CSS files: ${cssResources.length}`);
-  
+
   const totalSize = resources.reduce((sum, resource: any) => {
     return sum + (resource.transferSize || 0);
   }, 0);
-  
+
   console.log(`Total transfer size: ${(totalSize / 1024).toFixed(2)} KB`);
   console.groupEnd();
 };
@@ -203,11 +201,11 @@ export const logBundleInfo = (): void => {
 export const useRenderTime = (componentName: string) => {
   React.useEffect(() => {
     const startTime = performance.now();
-    
+
     return () => {
       const endTime = performance.now();
       const duration = endTime - startTime;
-      
+
       if (process.env.NODE_ENV === 'development' && duration > 16) {
         console.warn(`🐌 Slow render: ${componentName} took ${duration.toFixed(2)}ms`);
       }
@@ -221,22 +219,29 @@ export const createLazyComponent = <T extends React.ComponentType<any>>(
   fallback?: React.ComponentType
 ) => {
   const LazyComponent = React.lazy(importFn);
-  
+
   return (props: React.ComponentProps<T>) =>
     React.createElement(
       React.Suspense,
-      { fallback: fallback ? React.createElement(fallback) : React.createElement('div', {}, 'Loading...') },
+      {
+        fallback: fallback
+          ? React.createElement(fallback)
+          : React.createElement('div', {}, 'Loading...'),
+      },
       React.createElement(LazyComponent, props)
     );
 };
 
 // Image optimization utilities
-export const optimizeImage = (src: string, _options: {
-  width?: number;
-  height?: number;
-  quality?: number;
-  format?: 'webp' | 'avif' | 'jpeg' | 'png';
-} = {}): string => {
+export const optimizeImage = (
+  src: string,
+  _options: {
+    width?: number;
+    height?: number;
+    quality?: number;
+    format?: 'webp' | 'avif' | 'jpeg' | 'png';
+  } = {}
+): string => {
   // This would typically integrate with an image optimization service
   // For now, return the original source
   return src;

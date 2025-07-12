@@ -53,8 +53,20 @@ const RawPastePage = () => {
   }
 
   return (
-    <Box sx={{ my: 4, p: 2, border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#f4f4f4' }}>
-      <Typography variant="body1" component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+    <Box
+      sx={{
+        my: 4,
+        p: 2,
+        border: '1px solid #ddd',
+        borderRadius: '4px',
+        backgroundColor: '#f4f4f4',
+      }}
+    >
+      <Typography
+        variant="body1"
+        component="pre"
+        sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+      >
         {pasteContent}
       </Typography>
     </Box>

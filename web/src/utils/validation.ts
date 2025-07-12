@@ -66,7 +66,7 @@ export const validateExpiry = (expiryMinutes: string): string | null => {
   }
 
   const minutes = parseInt(expiryMinutes, 10);
-  
+
   if (isNaN(minutes)) {
     return 'Invalid expiry time';
   }
@@ -145,7 +145,7 @@ export const getLanguageDisplayName = (language: string): string => {
     bash: 'Bash',
     powershell: 'PowerShell',
   };
-  
+
   return displayNames[language] || language.charAt(0).toUpperCase() + language.slice(1);
 };
 

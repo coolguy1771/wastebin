@@ -24,7 +24,7 @@ const WorkingComponent: React.FC = () => {
 describe('ErrorBoundary', () => {
   // Suppress console.error for these tests
   const originalError = console.error;
-  
+
   beforeEach(() => {
     console.error = vi.fn();
   });
@@ -67,7 +67,7 @@ describe('ErrorBoundary', () => {
 
   it('calls retry functionality when retry button is clicked', async () => {
     const user = userEvent.setup();
-    
+
     renderWithProviders(
       <ErrorBoundary>
         <ThrowError />

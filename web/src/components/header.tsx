@@ -48,10 +48,10 @@ const Header = () => {
       </Box>
       <Divider />
       <List>
-        {navigationItems.map((item) => (
+        {navigationItems.map(item => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton 
-              component={Link} 
+            <ListItemButton
+              component={Link}
               to={item.path}
               selected={location.pathname === item.path}
             >
@@ -82,36 +82,28 @@ const Header = () => {
 
   return (
     <>
-      <AppBar 
-        position="sticky" 
+      <AppBar
+        position="sticky"
         elevation={1}
         sx={{
           backdropFilter: 'blur(10px)',
-          backgroundColor: 
-            mode === 'dark' 
-              ? 'rgba(18, 18, 18, 0.9)' 
-              : 'rgba(255, 255, 255, 0.9)',
+          backgroundColor: mode === 'dark' ? 'rgba(18, 18, 18, 0.9)' : 'rgba(255, 255, 255, 0.9)',
         }}
       >
         <Toolbar sx={{ px: { xs: 2, md: 4, lg: 6 } }}>
           {isMobile && (
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
-            >
+            <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2 }}>
               <MenuIcon />
             </IconButton>
           )}
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
             <CodeIcon sx={{ display: { xs: 'none', md: 'flex' } }} />
-            <Typography 
-              variant="h6" 
-              component={Link} 
+            <Typography
+              variant="h6"
+              component={Link}
               to="/"
-              sx={{ 
+              sx={{
                 textDecoration: 'none',
                 color: 'inherit',
                 fontWeight: 700,
@@ -125,13 +117,13 @@ const Header = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {!isMobile && (
               <>
-                {navigationItems.map((item) => (
+                {navigationItems.map(item => (
                   <Button
                     key={item.text}
-                    color="inherit" 
-                    component={Link} 
+                    color="inherit"
+                    component={Link}
                     to={item.path}
-                    sx={{ 
+                    sx={{
                       textTransform: 'none',
                       fontWeight: location.pathname === item.path ? 600 : 400,
                       position: 'relative',
@@ -151,7 +143,7 @@ const Header = () => {
                     {item.text}
                   </Button>
                 ))}
-                
+
                 <Button
                   variant="contained"
                   component={Link}
@@ -195,8 +187,8 @@ const Header = () => {
         }}
         sx={{
           display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': { 
-            boxSizing: 'border-box', 
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
             width: 250,
           },
         }}

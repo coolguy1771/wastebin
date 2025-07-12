@@ -28,7 +28,7 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
     // Set up CSP if enabled
     if (config.cspEnabled) {
       const cspHeader = generateCSPHeader();
-      
+
       // Add CSP meta tag if not already present
       const existingCSP = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
       if (!existingCSP) {
@@ -44,7 +44,7 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
       if (!isSecureContext()) {
         console.warn('⚠️ Not running in secure context (HTTPS). Some features may be limited.');
       }
-      
+
       if (config.debugMode) {
         console.log('🔒 Security Context initialized:', {
           isSecure: isSecureContext(),
@@ -69,11 +69,7 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
     resetRateLimit,
   };
 
-  return (
-    <SecurityContext.Provider value={contextValue}>
-      {children}
-    </SecurityContext.Provider>
-  );
+  return <SecurityContext.Provider value={contextValue}>{children}</SecurityContext.Provider>;
 };
 
 /**

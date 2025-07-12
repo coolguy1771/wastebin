@@ -11,7 +11,9 @@
 .logo {
   height: 6rem;
   padding: 1.5rem;
-  transition: filter 300ms ease, transform 300ms ease;
+  transition:
+    filter 300ms ease,
+    transform 300ms ease;
   will-change: filter, transform; /* Improved browser optimization */
   display: inline-block;
 }

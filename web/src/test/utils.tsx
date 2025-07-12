@@ -17,43 +17,25 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 }
 
 // All providers wrapper
-const AllProviders: React.FC<{ 
+const AllProviders: React.FC<{
   children: ReactNode;
   initialEntries?: string[];
   withErrorBoundary?: boolean;
-}> = ({ 
-  children, 
-  initialEntries: _initialEntries = ['/'],
-  withErrorBoundary = true,
-}) => {
-  const content = withErrorBoundary ? (
-    <ErrorBoundary>
-      {children}
-    </ErrorBoundary>
-  ) : children;
+}> = ({ children, initialEntries: _initialEntries = ['/'], withErrorBoundary = true }) => {
+  const content = withErrorBoundary ? <ErrorBoundary>{children}</ErrorBoundary> : children;
 
   return (
     <BrowserRouter>
       <SecurityProvider>
-        <ThemeContextProvider>
-          {content}
-        </ThemeContextProvider>
+        <ThemeContextProvider>{content}</ThemeContextProvider>
       </SecurityProvider>
     </BrowserRouter>
   );
 };
 
 // Custom render function
-export const renderWithProviders = (
-  ui: ReactElement,
-  options: CustomRenderOptions = {}
-) => {
-  const {
-    initialEntries,
-    withErrorBoundary,
-    theme,
-    ...renderOptions
-  } = options;
+export const renderWithProviders = (ui: ReactElement, options: CustomRenderOptions = {}) => {
+  const { initialEntries, withErrorBoundary, theme, ...renderOptions } = options;
 
   // Set theme in localStorage if specified
   if (theme) {
@@ -62,10 +44,7 @@ export const renderWithProviders = (
 
   return render(ui, {
     wrapper: ({ children }) => (
-      <AllProviders
-        initialEntries={initialEntries}
-        withErrorBoundary={withErrorBoundary}
-      >
+      <AllProviders initialEntries={initialEntries} withErrorBoundary={withErrorBoundary}>
         {children}
       </AllProviders>
     ),
@@ -74,13 +53,10 @@ export const renderWithProviders = (
 };
 
 // Form testing utilities
-export const fillForm = async (
-  user: any,
-  fields: Record<string, string | boolean>
-) => {
+export const fillForm = async (user: any, fields: Record<string, string | boolean>) => {
   for (const [name, value] of Object.entries(fields)) {
     const field = document.querySelector(`[name="${name}"]`) as HTMLElement;
-    
+
     if (!field) {
       throw new Error(`Field with name "${name}" not found`);
     }
@@ -101,13 +77,9 @@ export const fillForm = async (
 // Wait for loading to complete
 export const waitForLoadingToFinish = async () => {
   const { queryByText } = await import('@testing-library/react');
-  
+
   // Wait for common loading indicators to disappear
-  const loadingIndicators = [
-    'Loading...',
-    'Please wait...',
-    'Submitting...',
-  ];
+  const loadingIndicators = ['Loading...', 'Please wait...', 'Submitting...'];
 
   for (const indicator of loadingIndicators) {
     const element = queryByText(document.body, indicator);
@@ -164,17 +136,17 @@ export const customMatchers = {
   toBeValidUUID: (received: string) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const pass = uuidRegex.test(received);
-    
+
     return {
       pass,
       message: () => `expected ${received} ${pass ? 'not ' : ''}to be a valid UUID`,
     };
   },
-  
+
   toHaveValidTimestamp: (received: string) => {
     const date = new Date(received);
     const pass = !isNaN(date.getTime());
-    
+
     return {
       pass,
       message: () => `expected ${received} ${pass ? 'not ' : ''}to be a valid timestamp`,

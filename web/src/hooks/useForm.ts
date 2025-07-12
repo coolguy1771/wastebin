@@ -63,52 +63,55 @@ export function useForm<T extends Record<string, any>>({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Validation function
-  const validateField = useCallback((field: keyof T, value: any): string | null => {
-    const rules = validationRules[field];
-    if (!rules) return null;
+  const validateField = useCallback(
+    (field: keyof T, value: any): string | null => {
+      const rules = validationRules[field];
+      if (!rules) return null;
 
-    // Required validation
-    if (rules.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
-      return rules.message || 'This field is required';
-    }
+      // Required validation
+      if (rules.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
+        return rules.message || 'This field is required';
+      }
 
-    // Skip other validations if field is empty and not required
-    if (!value || (typeof value === 'string' && value.trim() === '')) {
+      // Skip other validations if field is empty and not required
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        return null;
+      }
+
+      // String validations
+      if (typeof value === 'string') {
+        if (rules.minLength && value.length < rules.minLength) {
+          return rules.message || `Must be at least ${rules.minLength} characters`;
+        }
+
+        if (rules.maxLength && value.length > rules.maxLength) {
+          return rules.message || `Must be no more than ${rules.maxLength} characters`;
+        }
+
+        if (rules.pattern && !rules.pattern.test(value)) {
+          return rules.message || 'Invalid format';
+        }
+      }
+
+      // Custom validation
+      if (rules.custom) {
+        const customError = rules.custom(value);
+        if (customError) {
+          return customError;
+        }
+      }
+
       return null;
-    }
-
-    // String validations
-    if (typeof value === 'string') {
-      if (rules.minLength && value.length < rules.minLength) {
-        return rules.message || `Must be at least ${rules.minLength} characters`;
-      }
-
-      if (rules.maxLength && value.length > rules.maxLength) {
-        return rules.message || `Must be no more than ${rules.maxLength} characters`;
-      }
-
-      if (rules.pattern && !rules.pattern.test(value)) {
-        return rules.message || 'Invalid format';
-      }
-    }
-
-    // Custom validation
-    if (rules.custom) {
-      const customError = rules.custom(value);
-      if (customError) {
-        return customError;
-      }
-    }
-
-    return null;
-  }, [validationRules]);
+    },
+    [validationRules]
+  );
 
   // Validate all fields
   const validateForm = useCallback((): boolean => {
     const newErrors: Partial<Record<keyof T, string>> = {};
     let hasErrors = false;
 
-    Object.keys(values).forEach((key) => {
+    Object.keys(values).forEach(key => {
       const field = key as keyof T;
       const error = validateField(field, values[field]);
       if (error) {
@@ -122,15 +125,18 @@ export function useForm<T extends Record<string, any>>({
   }, [values, validateField]);
 
   // Set field value with validation
-  const setValue = useCallback((field: keyof T, value: any) => {
-    setValues(prev => ({ ...prev, [field]: value }));
-    
-    // Validate field if it's been touched
-    if (touched[field]) {
-      const error = validateField(field, value);
-      setErrors(prev => ({ ...prev, [field]: error }));
-    }
-  }, [touched, validateField]);
+  const setValue = useCallback(
+    (field: keyof T, value: any) => {
+      setValues(prev => ({ ...prev, [field]: value }));
+
+      // Validate field if it's been touched
+      if (touched[field]) {
+        const error = validateField(field, value);
+        setErrors(prev => ({ ...prev, [field]: error }));
+      }
+    },
+    [touched, validateField]
+  );
 
   // Set field error manually
   const setFieldError = useCallback((field: keyof T, error: string | null) => {
@@ -138,15 +144,18 @@ export function useForm<T extends Record<string, any>>({
   }, []);
 
   // Set field touched state
-  const setFieldTouched = useCallback((field: keyof T, isTouched: boolean = true) => {
-    setTouched(prev => ({ ...prev, [field]: isTouched }));
-    
-    // Validate field when touched
-    if (isTouched) {
-      const error = validateField(field, values[field]);
-      setErrors(prev => ({ ...prev, [field]: error }));
-    }
-  }, [values, validateField]);
+  const setFieldTouched = useCallback(
+    (field: keyof T, isTouched: boolean = true) => {
+      setTouched(prev => ({ ...prev, [field]: isTouched }));
+
+      // Validate field when touched
+      if (isTouched) {
+        const error = validateField(field, values[field]);
+        setErrors(prev => ({ ...prev, [field]: error }));
+      }
+    },
+    [values, validateField]
+  );
 
   // Reset form
   const reset = useCallback(() => {
@@ -157,59 +166,68 @@ export function useForm<T extends Record<string, any>>({
   }, [initialValues]);
 
   // Handle form submission
-  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      if (e) {
+        e.preventDefault();
+      }
 
-    // Mark all fields as touched
-    const newTouched: Partial<Record<keyof T, boolean>> = {};
-    Object.keys(values).forEach((key) => {
-      newTouched[key as keyof T] = true;
-    });
-    setTouched(newTouched);
+      // Mark all fields as touched
+      const newTouched: Partial<Record<keyof T, boolean>> = {};
+      Object.keys(values).forEach(key => {
+        newTouched[key as keyof T] = true;
+      });
+      setTouched(newTouched);
 
-    // Validate form
-    const isValid = validateForm();
-    if (!isValid || !onSubmit) {
-      return;
-    }
+      // Validate form
+      const isValid = validateForm();
+      if (!isValid || !onSubmit) {
+        return;
+      }
 
-    setIsSubmitting(true);
-    try {
-      await onSubmit(values);
-    } catch (error) {
-      // Handle submission errors
-      console.error('Form submission error:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [values, validateForm, onSubmit]);
+      setIsSubmitting(true);
+      try {
+        await onSubmit(values);
+      } catch (error) {
+        // Handle submission errors
+        console.error('Form submission error:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [values, validateForm, onSubmit]
+  );
 
   // Get field props for easy integration with Material-UI
-  const getFieldProps = useCallback((field: keyof T) => ({
-    value: values[field] || '',
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setValue(field, e.target.value);
-    },
-    onBlur: () => {
-      setFieldTouched(field, true);
-    },
-    error: !!(touched[field] && errors[field]),
-    helperText: touched[field] ? errors[field] : undefined,
-  }), [values, errors, touched, setValue, setFieldTouched]);
+  const getFieldProps = useCallback(
+    (field: keyof T) => ({
+      value: values[field] || '',
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setValue(field, e.target.value);
+      },
+      onBlur: () => {
+        setFieldTouched(field, true);
+      },
+      error: !!(touched[field] && errors[field]),
+      helperText: touched[field] ? errors[field] : undefined,
+    }),
+    [values, errors, touched, setValue, setFieldTouched]
+  );
 
   // Get select props for Material-UI Select components
-  const getSelectProps = useCallback((field: keyof T) => ({
-    value: values[field] || '',
-    onChange: (e: SelectChangeEvent) => {
-      setValue(field, e.target.value);
-    },
-    onBlur: () => {
-      setFieldTouched(field, true);
-    },
-    error: !!(touched[field] && errors[field]),
-  }), [values, errors, touched, setValue, setFieldTouched]);
+  const getSelectProps = useCallback(
+    (field: keyof T) => ({
+      value: values[field] || '',
+      onChange: (e: SelectChangeEvent) => {
+        setValue(field, e.target.value);
+      },
+      onBlur: () => {
+        setFieldTouched(field, true);
+      },
+      error: !!(touched[field] && errors[field]),
+    }),
+    [values, errors, touched, setValue, setFieldTouched]
+  );
 
   // Check if form is valid
   const isValid = useMemo(() => {

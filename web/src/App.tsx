@@ -11,12 +11,15 @@ import Layout from './components/Layout';
 
 const AppRoutes = () => {
   const location = useLocation();
-  
+
   // Define routes that should use full-width layout
   const fullWidthRoutes = ['/paste/new', '/paste/'];
-  const isFullWidth = fullWidthRoutes.some(route => 
-    location.pathname === route || 
-    (route === '/paste/' && location.pathname.startsWith('/paste/') && !location.pathname.endsWith('/raw'))
+  const isFullWidth = fullWidthRoutes.some(
+    route =>
+      location.pathname === route ||
+      (route === '/paste/' &&
+        location.pathname.startsWith('/paste/') &&
+        !location.pathname.endsWith('/raw'))
   );
 
   return (

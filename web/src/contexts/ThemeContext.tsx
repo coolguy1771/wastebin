@@ -52,7 +52,7 @@ export const ThemeContextProvider: React.FC<ThemeContextProviderProps> = ({ chil
     if (!config.enableDarkMode) return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const handleChange = (e: MediaQueryListEvent) => {
       // Only auto-switch if user hasn't set a preference
       const storedMode = localStorage.getItem(THEME_STORAGE_KEY);
@@ -72,7 +72,7 @@ export const ThemeContextProvider: React.FC<ThemeContextProviderProps> = ({ chil
 
   const toggleColorMode = () => {
     if (!config.enableDarkMode) return;
-    setMode(prevMode => prevMode === 'light' ? 'dark' : 'light');
+    setMode(prevMode => (prevMode === 'light' ? 'dark' : 'light'));
   };
 
   const setColorMode = (newMode: PaletteMode) => {

@@ -17,15 +17,32 @@ const HomePage = () => {
           Wastebin is a secure and easy-to-use pastebin service for sharing text and code snippets.
         </Typography>
         {/* Link to create a new paste */}
-        <Button component={Link} to={`/paste/new`} variant="contained" color="primary" sx={{ mr: 2 }}>
+        <Button
+          component={Link}
+          to={`/paste/new`}
+          variant="contained"
+          color="primary"
+          sx={{ mr: 2 }}
+        >
           Create New Paste
         </Button>
         {/* Link to view a regular paste */}
-        <Button component={Link} to={`/paste/${samplePasteId}`} variant="outlined" color="secondary" sx={{ mr: 2 }}>
+        <Button
+          component={Link}
+          to={`/paste/${samplePasteId}`}
+          variant="outlined"
+          color="secondary"
+          sx={{ mr: 2 }}
+        >
           View Paste
         </Button>
         {/* Link to view the raw version of a paste */}
-        <Button component={Link} to={`/paste/${samplePasteId}/raw`} variant="outlined" color="secondary">
+        <Button
+          component={Link}
+          to={`/paste/${samplePasteId}/raw`}
+          variant="outlined"
+          color="secondary"
+        >
           View Raw Paste
         </Button>
       </Box>

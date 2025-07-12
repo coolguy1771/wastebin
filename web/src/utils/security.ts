@@ -6,9 +6,9 @@
 export const CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
   scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Note: unsafe-* should be removed in production
-  styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-  fontSrc: ["'self'", "https://fonts.gstatic.com"],
-  imgSrc: ["'self'", "data:", "https:"],
+  styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+  fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+  imgSrc: ["'self'", 'data:', 'https:'],
   connectSrc: ["'self'"],
   objectSrc: ["'none'"],
   mediaSrc: ["'self'"],
@@ -39,11 +39,30 @@ export const sanitizeHTMLAdvanced = (
 
   // Remove dangerous attributes
   const dangerousAttributes = [
-    'onclick', 'onload', 'onerror', 'onmouseover', 'onmouseout',
-    'onfocus', 'onblur', 'onchange', 'onsubmit', 'onreset',
-    'onselect', 'onunload', 'onresize', 'onscroll', 'href',
-    'src', 'action', 'formaction', 'background', 'lowsrc',
-    'ping', 'poster', 'xlink:href', 'xml:base'
+    'onclick',
+    'onload',
+    'onerror',
+    'onmouseover',
+    'onmouseout',
+    'onfocus',
+    'onblur',
+    'onchange',
+    'onsubmit',
+    'onreset',
+    'onselect',
+    'onunload',
+    'onresize',
+    'onscroll',
+    'href',
+    'src',
+    'action',
+    'formaction',
+    'background',
+    'lowsrc',
+    'ping',
+    'poster',
+    'xlink:href',
+    'xml:base',
   ];
 
   const allElements = temp.querySelectorAll('*');
@@ -83,7 +102,7 @@ export const createSafeURL = (url: string): string | null => {
   }
 
   const parsedURL = new URL(url);
-  
+
   // Block dangerous protocols
   const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
   if (dangerousProtocols.includes(parsedURL.protocol)) {
@@ -137,10 +156,9 @@ export const containsXSS = (input: string): boolean => {
 
 // Safe string encoding for URLs
 export const encodeURIComponentSafe = (str: string): string => {
-  return encodeURIComponent(str)
-    .replace(/[!'()*]/g, (c) => {
-      return '%' + c.charCodeAt(0).toString(16);
-    });
+  return encodeURIComponent(str).replace(/[!'()*]/g, c => {
+    return '%' + c.charCodeAt(0).toString(16);
+  });
 };
 
 // Content Security Policy header generation
@@ -174,10 +192,10 @@ class RateLimiter {
   isAllowed(key: string): boolean {
     const now = Date.now();
     const attempts = this.attempts.get(key) || [];
-    
+
     // Remove old attempts outside the window
     const validAttempts = attempts.filter(time => now - time < this.windowMs);
-    
+
     if (validAttempts.length >= this.maxAttempts) {
       return false;
     }
@@ -185,7 +203,7 @@ class RateLimiter {
     // Add current attempt
     validAttempts.push(now);
     this.attempts.set(key, validAttempts);
-    
+
     return true;
   }
 
@@ -235,7 +253,7 @@ export const validateFile = (file: File): { valid: boolean; error?: string } => 
   // Check for dangerous file extensions
   const dangerousExtensions = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.vbs', '.js'];
   const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-  
+
   if (dangerousExtensions.includes(fileExtension)) {
     return { valid: false, error: 'File extension not allowed' };
   }

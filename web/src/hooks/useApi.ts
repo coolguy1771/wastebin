@@ -51,14 +51,14 @@ export function useApi<T = unknown>(): UseApiReturn<T> {
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       const retryable = isRetryableError(error);
-      
+
       setState(prev => ({
         ...prev,
         loading: false,
         error: errorMessage,
         isRetryable: retryable,
       }));
-      
+
       return null;
     }
   }, []);
@@ -94,10 +94,13 @@ export function useApiMutation(): UseApiReturn<void> & {
   execute: (operation: () => Promise<void>) => Promise<void>;
 } {
   const api = useApi<void>();
-  
-  const execute = useCallback(async (operation: () => Promise<void>): Promise<void> => {
-    await api.execute(operation);
-  }, [api.execute]);
+
+  const execute = useCallback(
+    async (operation: () => Promise<void>): Promise<void> => {
+      await api.execute(operation);
+    },
+    [api.execute]
+  );
 
   return {
     ...api,

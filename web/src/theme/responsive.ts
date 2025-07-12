@@ -21,17 +21,17 @@ export const customBreakpoints = {
 // Custom hook for responsive values
 export function useResponsive() {
   const theme = useTheme();
-  
+
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const isLarge = useMediaQuery(theme.breakpoints.up('lg'));
   const isXLarge = useMediaQuery(theme.breakpoints.up('xl'));
-  
+
   // Custom breakpoints
   const isSmallMobile = useMediaQuery(`(max-width: ${customBreakpoints.mobile}px)`);
   const isWideScreen = useMediaQuery(`(min-width: ${customBreakpoints.wide}px)`);
-  
+
   return {
     isMobile,
     isTablet,
@@ -40,12 +40,12 @@ export function useResponsive() {
     isXLarge,
     isSmallMobile,
     isWideScreen,
-    
+
     // Utility functions
     only: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.only(breakpoint)),
     up: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.up(breakpoint)),
     down: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.down(breakpoint)),
-    between: (start: Breakpoint, end: Breakpoint) => 
+    between: (start: Breakpoint, end: Breakpoint) =>
       useMediaQuery(theme.breakpoints.between(start, end)),
   };
 }
@@ -130,7 +130,7 @@ export const componentStyles = {
       desktop: { x: 3, y: 1.5 },
     },
   },
-  
+
   navigation: {
     width: {
       mobile: '100%',
@@ -138,7 +138,7 @@ export const componentStyles = {
       desktop: '280px',
     },
   },
-  
+
   content: {
     padding: {
       mobile: { x: 2, y: 2 },
@@ -151,7 +151,7 @@ export const componentStyles = {
       desktop: '1200px',
     },
   },
-  
+
   form: {
     spacing: {
       mobile: 2,
@@ -163,7 +163,7 @@ export const componentStyles = {
       desktop: 'large',
     } as const,
   },
-  
+
   card: {
     padding: {
       mobile: 2,

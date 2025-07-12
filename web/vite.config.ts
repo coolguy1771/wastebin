@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  
+
   // Base path for assets (empty for root-relative paths)
   base: '/',
 
@@ -101,7 +101,7 @@ export default defineConfig({
     },
   },
 
-  // Preview configuration  
+  // Preview configuration
   preview: {
     port: 4173,
     proxy: {
