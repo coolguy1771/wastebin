@@ -41,7 +41,7 @@ RUN npm run build
 # ================================
 # Backend Build Stage  
 # ================================
-FROM golang:1.23-alpine AS backend
+FROM golang:1.24-alpine@sha256:ddf52008bce1be455fe2b22d780b6693259aaf97b16383b6372f4b22dd33ad66 AS backend
 
 # Build arguments
 ARG TARGETOS
