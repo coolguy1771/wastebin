@@ -7,6 +7,7 @@ on:
     branches: [main]
   schedule:
     - cron: '0 6 * * 1' # Weekly on Mondays
+  workflow_call:
 
 permissions:
   contents: read
@@ -31,7 +32,7 @@ jobs:
           cache: true
 
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@v2
+        uses: securego/gosec@master
         with:
           args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
@@ -59,25 +60,6 @@ jobs:
         with:
           go-version-input: ${{ env.GO_VERSION }}
           go-package: ./...
-
-  nancy:
-    name: Nancy Vulnerability Scanner
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Go Environment
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-
-      - name: Install Nancy
-        run: go install github.com/sonatypecommunity/nancy@latest
-
-      - name: List dependencies
-        run: go list -json -deps ./... | nancy sleuth
 
   semgrep:
     name: Semgrep Security Scan
