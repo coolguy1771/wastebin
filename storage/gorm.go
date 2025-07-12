@@ -88,7 +88,9 @@ func connectSQLite(obs *observability.Provider) (*gorm.DB, error) {
 	return conn, nil
 }
 
-// connectPostgres connects to a remote PostgreSQL database.
+// connectPostgres establishes a connection to a remote PostgreSQL database using configuration settings.
+// It applies connection pool parameters and optional observability instrumentation.
+// Returns the GORM database connection or an error if the connection fails.
 func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 	log.Info("Connecting to remote PostgreSQL database",
 		zap.String("host", config.Conf.DBHost),

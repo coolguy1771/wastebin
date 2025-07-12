@@ -88,7 +88,12 @@ export function useApi<T = unknown>(): UseApiReturn<T> {
 }
 
 /**
- * Specialized hook for API operations that return void (like delete operations)
+ * React hook for managing API mutations that do not return data.
+ *
+ * Provides state tracking and retry capabilities for operations such as deletes or updates that return `void`.
+ * The returned `execute` method ensures a `Promise<void>` signature for mutation operations.
+ *
+ * @returns An object containing mutation state, retry/reset actions, and an `execute` method for void-returning API operations.
  */
 export function useApiMutation(): UseApiReturn<void> & {
   execute: (operation: () => Promise<void>) => Promise<void>;

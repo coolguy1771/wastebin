@@ -12,7 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// CSRFProtectionMiddleware provides CSRF protection for state-changing operations
+// CSRFProtectionMiddleware enforces CSRF protection for state-changing HTTP requests to non-API endpoints.
+// It validates a CSRF token from the request against a configured secret key, rejecting requests with HTTP 403 Forbidden if validation fails. CSRF checks are skipped for safe HTTP methods (GET, HEAD, OPTIONS) and for API routes.
 func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Skip CSRF protection for GET, HEAD, OPTIONS requests
@@ -49,7 +50,9 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RequestSizeLimitMiddleware limits the size of incoming requests
+// RequestSizeLimitMiddleware returns middleware that enforces a maximum size for incoming HTTP requests.
+// If the request's Content-Length exceeds maxSize, the middleware responds with HTTP 413 Request Entity Too Large and does not call the next handler.
+// Otherwise, it wraps the request body to prevent reading more than maxSize bytes before passing control to the next handler.
 func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +73,7 @@ func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Hand
 	}
 }
 
-// SecurityHeadersMiddleware adds security headers to all responses
+// SecurityHeadersMiddleware adds standard security-related HTTP headers to all responses, including protections against MIME sniffing, clickjacking, XSS, and sets a strict Content Security Policy. It also adds HSTS headers for HTTPS requests.
 func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Security headers
@@ -99,7 +102,9 @@ func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// BasicAuthMiddleware provides optional basic authentication
+// BasicAuthMiddleware enforces HTTP Basic Authentication if enabled in the configuration.
+// If authentication is required, it validates credentials from the request using constant-time comparison and responds with HTTP 401 Unauthorized if authentication fails.
+// Proceeds to the next handler upon successful authentication or if authentication is not required.
 func BasicAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !config.Conf.RequireAuth {
@@ -136,7 +141,8 @@ func BasicAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// SecurityAuditMiddleware logs security events
+// SecurityAuditMiddleware logs security-related HTTP responses such as rate limiting, unauthorized, and forbidden access attempts.
+// It captures the response status code and logs relevant request details for HTTP 429, 401, and 403 responses before returning control to the next handler.
 func SecurityAuditMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wrap response writer to capture status code
@@ -180,6 +186,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+// getRealIP extracts the client's real IP address from the HTTP request, checking the X-Forwarded-For and X-Real-IP headers before falling back to RemoteAddr.
 func getRealIP(r *http.Request) string {
 	// Check X-Forwarded-For header first
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
@@ -199,6 +206,8 @@ func getRealIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
+// validateCSRFToken checks whether the provided CSRF token matches the expected token generated from the given key using constant-time comparison.
+// Returns true if the token is valid and false otherwise.
 func validateCSRFToken(token, key string) bool {
 	if token == "" || key == "" {
 		return false
@@ -210,6 +219,8 @@ func validateCSRFToken(token, key string) bool {
 	return subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) == 1
 }
 
+// generateCSRFToken creates a 32-byte base64-encoded CSRF token using the provided key and random bytes.
+// The token begins with the bytes of the key and fills the remainder with cryptographically secure random data.
 func generateCSRFToken(key string) string {
 	// Generate a simple token based on the key
 	// In production, this should include timestamp and be more secure

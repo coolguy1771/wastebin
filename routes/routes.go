@@ -18,6 +18,9 @@ import (
 	"github.com/go-chi/httprate"
 )
 
+// initChiRouter initializes and configures a Chi router with core middleware for security, observability, logging, panic recovery, rate limiting, and API versioning.
+// The router is set up with security headers, request size limits, security audit logging, optional basic authentication, CSRF protection, and a heartbeat endpoint.
+// If an observability provider is supplied, its HTTP middleware is included. The router is returned ready for further route registration.
 func initChiRouter(obs *observability.Provider) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -49,7 +52,8 @@ func initChiRouter(obs *observability.Provider) *chi.Mux {
 	return r
 }
 
-// AddRoutes sets up all routes and middleware for the Chi router.
+// AddRoutes configures the Chi router with global middleware, CORS policy, API endpoints, and static file serving.
+// Returns the fully configured router ready to handle HTTP requests.
 func AddRoutes(obs *observability.Provider) *chi.Mux {
 	r := initChiRouter(obs)
 
@@ -148,7 +152,8 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 	}))
 }
 
-// getAllowedOrigins returns CORS allowed origins based on configuration
+// getAllowedOrigins returns a list of allowed CORS origins based on configuration and environment.
+// If explicit origins are configured, they are returned as a trimmed list. In development mode, common localhost origins are allowed. In production with no configuration, an empty list is returned to disallow all origins.
 func getAllowedOrigins() []string {
 	// Check for explicitly configured origins
 	if config.Conf.AllowedOrigins != "" {
