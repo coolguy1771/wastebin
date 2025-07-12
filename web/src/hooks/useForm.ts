@@ -50,7 +50,11 @@ export interface UseFormReturn<T> {
 }
 
 /**
- * Enhanced form hook with validation, error handling, and Material-UI integration
+ * React hook for managing form state, validation, error handling, and Material-UI integration.
+ *
+ * Provides controlled form values, validation logic, error tracking, touched state, and helpers for integrating with Material-UI input and select components. Supports synchronous and asynchronous form submission with built-in validation and reset functionality.
+ *
+ * @returns An object containing form state, validation status, and methods for manipulating form fields and handling submission.
  */
 export function useForm<T extends Record<string, unknown>>({
   initialValues,

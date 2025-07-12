@@ -18,7 +18,13 @@ export const customBreakpoints = {
   wide: 1440,
 } as const;
 
-// Custom hook for responsive values
+/**
+ * Provides boolean flags for common responsive breakpoints and exposes the current Material-UI theme.
+ *
+ * Returns an object with flags indicating if the viewport matches mobile, tablet, desktop, large, extra-large, small mobile, or wide screen breakpoints, along with the theme object for custom breakpoint queries.
+ *
+ * @returns An object containing responsive breakpoint flags and the current theme.
+ */
 export function useResponsive() {
   const theme = useTheme();
 
@@ -189,7 +195,14 @@ export const createBreakpointHelpers = (theme: Theme) => ({
   between: (start: Breakpoint, end: Breakpoint) => theme.breakpoints.between(start, end),
 });
 
-// Helper function to get responsive values
+/**
+ * Returns an object mapping responsive breakpoint keys to the provided values for mobile, tablet, and desktop.
+ *
+ * @param mobileValue - The value to use for the mobile (`xs`) breakpoint
+ * @param tabletValue - Optional value for the tablet (`sm`) breakpoint
+ * @param desktopValue - Optional value for the desktop (`md`) breakpoint
+ * @returns An object with keys `xs`, and optionally `sm` and `md`, mapped to the corresponding values
+ */
 export function getResponsiveValue<T>(
   mobileValue: T,
   tabletValue?: T,

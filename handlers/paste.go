@@ -123,7 +123,8 @@ var (
 	}
 )
 
-// CreatePaste handles the creation of a new paste.
+// CreatePaste processes an HTTP request to create a new paste, including content sanitization, language and expiry validation, and database storage.
+// On success, responds with HTTP 201 and the paste UUID in JSON; on failure, returns an appropriate error response.
 func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log.Info("CreatePaste called")
@@ -282,7 +283,8 @@ func handlePasteExpiryAndBurn(ctx context.Context, paste *models.Paste) (bool, e
 	return false, nil
 }
 
-// Helper function to delete a paste by its UUID.
+// deletePasteByUUID removes a paste from the database by its UUID.
+// Returns ErrPasteNotFound if no paste with the given UUID exists, or a database error if the operation fails.
 func deletePasteByUUID(ctx context.Context, pasteUUID uuid.UUID) error {
 	result := storage.DBConn.WithContext(ctx).Where("uuid = ?", pasteUUID).Delete(&models.Paste{})
 	if result.Error != nil {
@@ -294,7 +296,7 @@ func deletePasteByUUID(ctx context.Context, pasteUUID uuid.UUID) error {
 	return nil
 }
 
-// sanitizeContent cleans and validates content for security
+// sanitizeContent validates and cleans paste content by ensuring valid UTF-8 encoding, removing null bytes and carriage returns, and logging warnings if potentially dangerous patterns are detected. Returns the sanitized content or an error if the content is not valid UTF-8.
 func sanitizeContent(content string) (string, error) {
 	// Validate UTF-8 encoding
 	if !utf8.ValidString(content) {
@@ -322,7 +324,7 @@ func sanitizeContent(content string) (string, error) {
 	return content, nil
 }
 
-// validateLanguage checks if the provided language is allowed
+// validateLanguage returns true if the given language is in the set of allowed syntax highlighting languages, or if it is empty (plain text).
 func validateLanguage(language string) bool {
 	if language == "" {
 		return true // empty language is allowed (plain text)
@@ -334,7 +336,8 @@ func validateLanguage(language string) bool {
 	return allowedLanguages[language]
 }
 
-// Helper function to validate the create paste request.
+// validateCreatePasteRequest checks the validity of a CreatePasteRequest, ensuring content is present and within size limits, the language is allowed, and the expiry time is valid and within acceptable bounds.
+// Returns a specific error if any validation fails.
 func validateCreatePasteRequest(req models.CreatePasteRequest) error {
 	if req.Content == "" {
 		return ErrEmptyContent
