@@ -40,29 +40,29 @@
       "description": "Automerge patch updates for Go stdlib and well-known packages",
       "matchManagers": ["gomod"],
       "matchUpdateTypes": ["patch"],
-      "matchPackagePatterns": [
-        "^go$",
-        "^golang.org/x/",
-        "^github.com/stretchr/testify$",
-        "^go.uber.org/zap$",
-        "^gorm.io/"
-      ],
       "automerge": true,
-      "automergeType": "branch"
+      "automergeType": "branch",
+      "matchPackageNames": [
+        "/^go$/",
+        "/^golang.org/x//",
+        "/^github.com/stretchr/testify$/",
+        "/^go.uber.org/zap$/",
+        "/^gorm.io//"
+      ]
     },
     {
       "description": "Automerge patch updates for React ecosystem",
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["patch"],
-      "matchPackagePatterns": [
-        "^@types/",
-        "^react",
-        "^@mui/",
-        "typescript",
-        "vite"
-      ],
       "automerge": true,
-      "automergeType": "branch"
+      "automergeType": "branch",
+      "matchPackageNames": [
+        "/^@types//",
+        "/^react/",
+        "/^@mui//",
+        "/typescript/",
+        "/vite/"
+      ]
     },
     {
       "description": "Pin Docker digests",
@@ -78,13 +78,13 @@
     },
     {
       "description": "Security updates - high priority",
-      "matchPackagePatterns": ["*"],
       "matchDepTypes": ["dependencies"],
       "vulnerabilityAlerts": {
         "enabled": true
       },
       "prPriority": 10,
-      "schedule": ["at any time"]
+      "schedule": ["at any time"],
+      "matchPackageNames": ["*"]
     },
     {
       "description": "Major updates require manual review",
