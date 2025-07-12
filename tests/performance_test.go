@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"sync"
 	"testing"
@@ -13,9 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// BenchmarkCreatePaste benchmarks paste creation performance
+// BenchmarkCreatePaste benchmarks paste creation performance.
 func BenchmarkCreatePaste(b *testing.B) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -41,9 +43,10 @@ func BenchmarkCreatePaste(b *testing.B) {
 	})
 }
 
-// BenchmarkGetPaste benchmarks paste retrieval performance
+// BenchmarkGetPaste benchmarks paste retrieval performance.
 func BenchmarkGetPaste(b *testing.B) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -64,9 +67,10 @@ func BenchmarkGetPaste(b *testing.B) {
 	})
 }
 
-// BenchmarkGetRawPaste benchmarks raw paste retrieval performance
+// BenchmarkGetRawPaste benchmarks raw paste retrieval performance.
 func BenchmarkGetRawPaste(b *testing.B) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -87,9 +91,10 @@ func BenchmarkGetRawPaste(b *testing.B) {
 	})
 }
 
-// BenchmarkLargePasteCreation benchmarks creation of large pastes
+// BenchmarkLargePasteCreation benchmarks creation of large pastes.
 func BenchmarkLargePasteCreation(b *testing.B) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -110,7 +115,8 @@ func BenchmarkLargePasteCreation(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		server.MakeRequest(testutil.HTTPRequest{
 			Method:   "POST",
 			Path:     "/api/v1/paste",
@@ -119,9 +125,10 @@ func BenchmarkLargePasteCreation(b *testing.B) {
 	}
 }
 
-// TestConcurrentOperations tests concurrent read/write performance
+// TestConcurrentOperations tests concurrent read/write performance.
 func TestConcurrentOperations(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -134,17 +141,19 @@ func TestConcurrentOperations(t *testing.T) {
 	)
 
 	var wg sync.WaitGroup
+
 	results := make(chan result, numGoroutines*numOperations)
 
 	start := time.Now()
 
 	// Start concurrent workers
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
+
 		go func(workerID int) {
 			defer wg.Done()
 
-			for j := 0; j < numOperations; j++ {
+			for j := range numOperations {
 				opStart := time.Now()
 
 				// Create paste
@@ -162,11 +171,11 @@ func TestConcurrentOperations(t *testing.T) {
 				opDuration := time.Since(opStart)
 				results <- result{
 					operation: "create",
-					success:   resp.StatusCode == 201,
+					success:   resp.StatusCode == http.StatusCreated,
 					duration:  opDuration,
 				}
 
-				if resp.StatusCode == 201 {
+				if resp.StatusCode == http.StatusCreated {
 					pasteUUID := resp.JSON["uuid"].(string)
 
 					// Read paste
@@ -179,7 +188,7 @@ func TestConcurrentOperations(t *testing.T) {
 
 					results <- result{
 						operation: "read",
-						success:   getResp.StatusCode == 200,
+						success:   getResp.StatusCode == http.StatusOK,
 						duration:  opDuration,
 					}
 				}
@@ -193,8 +202,10 @@ func TestConcurrentOperations(t *testing.T) {
 	totalDuration := time.Since(start)
 
 	// Analyze results
-	var createOps, readOps, successfulOps int
-	var totalCreateTime, totalReadTime time.Duration
+	var (
+		createOps, readOps, successfulOps int
+		totalCreateTime, totalReadTime    time.Duration
+	)
 
 	for res := range results {
 		if res.operation == "create" {
@@ -227,13 +238,14 @@ func TestConcurrentOperations(t *testing.T) {
 	assert.Less(t, totalReadTime/time.Duration(readOps), 50*time.Millisecond, "Average read time should be < 50ms")
 }
 
-// TestLoadTesting performs basic load testing
+// TestLoadTesting performs basic load testing.
 func TestLoadTesting(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping load test in short mode")
 	}
 
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -247,16 +259,19 @@ func TestLoadTesting(t *testing.T) {
 	)
 
 	var wg sync.WaitGroup
+
 	results := make(chan result, 1000)
 	stop := make(chan struct{})
 
 	start := time.Now()
 
 	// Start workers
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		wg.Add(1)
+
 		go func(workerID int) {
 			defer wg.Done()
+
 			counter := 0
 
 			for {
@@ -280,7 +295,7 @@ func TestLoadTesting(t *testing.T) {
 
 					results <- result{
 						operation: "create",
-						success:   resp.StatusCode == 201,
+						success:   resp.StatusCode == http.StatusCreated,
 						duration:  time.Since(opStart),
 					}
 
@@ -300,9 +315,11 @@ func TestLoadTesting(t *testing.T) {
 	close(results)
 
 	// Analyze results
-	var totalOps, successfulOps int
-	var totalDuration time.Duration
-	var minDuration, maxDuration time.Duration = time.Hour, 0
+	var (
+		totalOps, successfulOps  int
+		totalDuration            time.Duration
+		minDuration, maxDuration time.Duration = time.Hour, 0
+	)
 
 	for res := range results {
 		totalOps++
@@ -315,6 +332,7 @@ func TestLoadTesting(t *testing.T) {
 		if res.duration < minDuration {
 			minDuration = res.duration
 		}
+
 		if res.duration > maxDuration {
 			maxDuration = res.duration
 		}
@@ -342,13 +360,14 @@ func TestLoadTesting(t *testing.T) {
 	assert.Less(t, maxDuration, 2*time.Second, "Max response time should be < 2s")
 }
 
-// TestMemoryUsage tests memory usage under load
+// TestMemoryUsage tests memory usage under load.
 func TestMemoryUsage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping memory test in short mode")
 	}
 
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -358,7 +377,7 @@ func TestMemoryUsage(t *testing.T) {
 	// Create many pastes to test memory usage
 	const numPastes = 1000
 
-	for i := 0; i < numPastes; i++ {
+	for i := range numPastes {
 		content := fmt.Sprintf("Memory test paste %d with some content to test memory usage", i)
 
 		resp := server.MakeRequest(testutil.HTTPRequest{
@@ -392,9 +411,10 @@ func TestMemoryUsage(t *testing.T) {
 	t.Logf("Successfully created and managed %d pastes", numPastes)
 }
 
-// TestDatabasePerformance tests database-specific performance
+// TestDatabasePerformance tests database-specific performance.
 func TestDatabasePerformance(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -403,9 +423,10 @@ func TestDatabasePerformance(t *testing.T) {
 
 	// Test batch creation performance
 	const batchSize = 100
+
 	start := time.Now()
 
-	for i := 0; i < batchSize; i++ {
+	for i := range batchSize {
 		server.CreateTestPaste(
 			fmt.Sprintf("Batch test paste %d", i),
 			"txt",
@@ -428,16 +449,17 @@ func TestDatabasePerformance(t *testing.T) {
 	assert.Greater(t, float64(batchSize)/batchDuration.Seconds(), 50.0, "Should create > 50 pastes/sec")
 }
 
-// result represents an operation result for performance testing
+// result represents an operation result for performance testing.
 type result struct {
 	operation string
 	success   bool
 	duration  time.Duration
 }
 
-// TestResponseTimeDistribution tests the distribution of response times
+// TestResponseTimeDistribution tests the distribution of response times.
 func TestResponseTimeDistribution(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -445,10 +467,11 @@ func TestResponseTimeDistribution(t *testing.T) {
 	defer server.Close()
 
 	const numRequests = 200
+
 	durations := make([]time.Duration, numRequests)
 
 	// Make requests and collect durations
-	for i := 0; i < numRequests; i++ {
+	for i := range numRequests {
 		start := time.Now()
 
 		server.MakeRequest(testutil.HTTPRequest{
@@ -481,11 +504,11 @@ func TestResponseTimeDistribution(t *testing.T) {
 	assert.Less(t, percentiles[99], 500*time.Millisecond, "P99 should be < 500ms")
 }
 
-// calculatePercentiles calculates percentiles from duration slice
+// calculatePercentiles calculates percentiles from duration slice.
 func calculatePercentiles(durations []time.Duration) map[int]time.Duration {
 	// Simple bubble sort for small datasets
 	for i := 0; i < len(durations); i++ {
-		for j := 0; j < len(durations)-1-i; j++ {
+		for j := range len(durations) - 1 - i {
 			if durations[j] > durations[j+1] {
 				durations[j], durations[j+1] = durations[j+1], durations[j]
 			}
@@ -498,6 +521,7 @@ func calculatePercentiles(durations []time.Duration) map[int]time.Duration {
 		if idx >= len(durations) {
 			idx = len(durations) - 1
 		}
+
 		percentiles[p] = durations[idx]
 	}
 

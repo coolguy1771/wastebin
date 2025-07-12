@@ -14,7 +14,7 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-// TracingConfig holds configuration for distributed tracing
+// TracingConfig holds configuration for distributed tracing.
 type TracingConfig struct {
 	Enabled     bool   `koanf:"TRACING_ENABLED"`
 	ServiceName string `koanf:"SERVICE_NAME"`
@@ -24,14 +24,14 @@ type TracingConfig struct {
 	Headers     map[string]string
 }
 
-// TracingProvider manages the OpenTelemetry tracing setup
+// TracingProvider manages the OpenTelemetry tracing setup.
 type TracingProvider struct {
 	tracer   oteltrace.Tracer
 	provider *trace.TracerProvider
 	config   TracingConfig
 }
 
-// NewTracingProvider creates a new tracing provider with the given configuration
+// NewTracingProvider creates a new tracing provider with the given configuration.
 func NewTracingProvider(config TracingConfig) (*TracingProvider, error) {
 	if !config.Enabled {
 		// Return a no-op provider if tracing is disabled
@@ -94,30 +94,31 @@ func NewTracingProvider(config TracingConfig) (*TracingProvider, error) {
 	}, nil
 }
 
-// Tracer returns the OpenTelemetry tracer
+// Tracer returns the OpenTelemetry tracer.
 func (tp *TracingProvider) Tracer() oteltrace.Tracer {
 	return tp.tracer
 }
 
-// Shutdown gracefully shuts down the tracing provider
+// Shutdown gracefully shuts down the tracing provider.
 func (tp *TracingProvider) Shutdown(ctx context.Context) error {
 	if tp.provider != nil {
 		return tp.provider.Shutdown(ctx)
 	}
+
 	return nil
 }
 
-// StartSpan is a convenience method to start a new span
+// StartSpan is a convenience method to start a new span.
 func (tp *TracingProvider) StartSpan(ctx context.Context, name string, opts ...oteltrace.SpanStartOption) (context.Context, oteltrace.Span) {
 	return tp.tracer.Start(ctx, name, opts...)
 }
 
-// GetSpanFromContext retrieves the current span from context
+// GetSpanFromContext retrieves the current span from context.
 func GetSpanFromContext(ctx context.Context) oteltrace.Span {
 	return oteltrace.SpanFromContext(ctx)
 }
 
-// AddSpanEvent adds an event to the current span
+// AddSpanEvent adds an event to the current span.
 func AddSpanEvent(ctx context.Context, name string, attributes ...oteltrace.EventOption) {
 	span := oteltrace.SpanFromContext(ctx)
 	if span.IsRecording() {
@@ -125,7 +126,7 @@ func AddSpanEvent(ctx context.Context, name string, attributes ...oteltrace.Even
 	}
 }
 
-// AddSpanError records an error in the current span
+// AddSpanError records an error in the current span.
 func AddSpanError(ctx context.Context, err error) {
 	span := oteltrace.SpanFromContext(ctx)
 	if span.IsRecording() && err != nil {
@@ -134,7 +135,7 @@ func AddSpanError(ctx context.Context, err error) {
 	}
 }
 
-// SetSpanAttributes sets attributes on the current span
+// SetSpanAttributes sets attributes on the current span.
 func SetSpanAttributes(ctx context.Context, attributes ...oteltrace.SpanStartOption) {
 	span := oteltrace.SpanFromContext(ctx)
 	if span.IsRecording() {

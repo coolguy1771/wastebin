@@ -53,7 +53,7 @@ export const validateLanguage = (language: string): string | null => {
     return 'Please select a language';
   }
 
-  if (!PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES.includes(language as any)) {
+  if (!PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES.includes(language)) {
     return 'Please select a supported language';
   }
 

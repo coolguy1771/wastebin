@@ -19,6 +19,7 @@ import (
 // setupTestApp initializes the Chi router with routes for testing.
 func setupTestApp() http.Handler {
 	router := AddRoutes(nil)
+
 	return router
 }
 
@@ -35,6 +36,7 @@ func setupTestDB() {
 // TestGetPaste tests the GET /api/v1/paste/:uuid endpoint.
 func TestGetPaste(t *testing.T) {
 	setupTestDB()
+
 	app := setupTestApp()
 
 	// Create a test paste in the database
@@ -47,7 +49,7 @@ func TestGetPaste(t *testing.T) {
 	storage.DBConn.Create(&testPaste)
 
 	// Make a request to the GetPaste endpoint
-	req := httptest.NewRequest("GET", "/api/v1/paste/"+pasteUUID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/paste/"+pasteUUID.String(), nil)
 	rr := httptest.NewRecorder()
 	app.ServeHTTP(rr, req)
 
@@ -58,12 +60,13 @@ func TestGetPaste(t *testing.T) {
 // TestCreatePaste tests the POST /api/v1/paste endpoint.
 func TestCreatePaste(t *testing.T) {
 	setupTestDB()
+
 	app := setupTestApp()
 
 	// Prepare form data
 	form := `expires=10&text=New paste content&burn=false&extension=text`
 
-	req := httptest.NewRequest("POST", "/api/v1/paste", strings.NewReader(form))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/paste", strings.NewReader(form))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// Make a request to the CreatePaste endpoint
@@ -77,6 +80,7 @@ func TestCreatePaste(t *testing.T) {
 // TestDeletePaste tests the DELETE /api/v1/paste/:uuid endpoint.
 func TestDeletePaste(t *testing.T) {
 	setupTestDB()
+
 	app := setupTestApp()
 
 	// Create a test paste in the database
@@ -89,7 +93,7 @@ func TestDeletePaste(t *testing.T) {
 	storage.DBConn.Create(&testPaste)
 
 	// Make a request to the DeletePaste endpoint
-	req := httptest.NewRequest("DELETE", "/api/v1/paste/"+pasteUUID.String(), nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/paste/"+pasteUUID.String(), nil)
 	rr := httptest.NewRecorder()
 	app.ServeHTTP(rr, req)
 
@@ -100,6 +104,7 @@ func TestDeletePaste(t *testing.T) {
 // TestGetRawPaste tests the GET /paste/:uuid/raw endpoint.
 func TestGetRawPaste(t *testing.T) {
 	setupTestDB()
+
 	app := setupTestApp()
 
 	// Create a test paste in the database
@@ -112,7 +117,7 @@ func TestGetRawPaste(t *testing.T) {
 	storage.DBConn.Create(&testPaste)
 
 	// Make a request to the GetRawPaste endpoint
-	req := httptest.NewRequest("GET", "/paste/"+pasteUUID.String()+"/raw", nil)
+	req := httptest.NewRequest(http.MethodGet, "/paste/"+pasteUUID.String()+"/raw", nil)
 	rr := httptest.NewRecorder()
 	app.ServeHTTP(rr, req)
 
@@ -129,7 +134,7 @@ func TestServeSPA(t *testing.T) {
 	app := AddRoutes(nil)
 
 	// Make a request to the root endpoint
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	app.ServeHTTP(rr, req)
 
@@ -143,8 +148,9 @@ func TestMiddlewareCors(t *testing.T) {
 	app := setupTestApp()
 
 	// Make a GET request to test CORS headers (OPTIONS may not be handled by Chi CORS)
-	req := httptest.NewRequest("GET", "/api/v1/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/", nil)
 	req.Header.Set("Origin", "http://localhost:3000")
+
 	rr := httptest.NewRecorder()
 	app.ServeHTTP(rr, req)
 

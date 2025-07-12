@@ -62,7 +62,7 @@ var (
 	Debug  = std.Debug
 )
 
-// not safe for concurrent use
+// not safe for concurrent use.
 func ResetDefault(l *Logger) {
 	std = l
 	Info = std.Info
@@ -90,9 +90,11 @@ func New(writer io.Writer, level string) (logger *Logger, err error) {
 	if err != nil {
 		return logger, err
 	}
+
 	if writer == nil {
 		return logger, err
 	}
+
 	cfg := zap.NewProductionConfig()
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(cfg.EncoderConfig),
@@ -103,6 +105,7 @@ func New(writer io.Writer, level string) (logger *Logger, err error) {
 		l:     zap.New(core),
 		level: parsedAtomicLevel,
 	}
+
 	return logger, err
 }
 
@@ -110,7 +113,7 @@ func (l *Logger) Sync() error {
 	return l.l.Sync()
 }
 
-// ZapLogger returns the underlying zap.Logger
+// ZapLogger returns the underlying zap.Logger.
 func (l *Logger) ZapLogger() *zap.Logger {
 	return l.l
 }
@@ -119,5 +122,6 @@ func Sync() error {
 	if std != nil {
 		return std.Sync()
 	}
+
 	return nil
 }

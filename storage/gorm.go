@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -41,9 +42,12 @@ func ConnectWithRetry(maxRetries int, obs *observability.Provider) error {
 
 		if err == nil {
 			// Test the connection
-			if err = testConnection(conn); err == nil {
+			err = testConnection(conn)
+			if err == nil {
 				DBConn = conn
+
 				log.Info("Database connection established successfully", zap.Int("attempt", attempt))
+
 				return nil
 			}
 		}
@@ -76,6 +80,7 @@ func connectSQLite(obs *observability.Provider) (*gorm.DB, error) {
 	conn, err := gorm.Open(sqlite.Open("dev.db"), config)
 	if err != nil {
 		log.Error("Error connecting to SQLite database", zap.Error(err))
+
 		return nil, err
 	}
 
@@ -85,18 +90,26 @@ func connectSQLite(obs *observability.Provider) (*gorm.DB, error) {
 	}
 
 	log.Info("Connected to local SQLite database")
+
 	return conn, nil
 }
 
-// connectPostgres connects to a remote PostgreSQL database.
+// connectPostgres establishes a connection to a remote PostgreSQL database using configuration parameters and applies connection pool settings and optional observability instrumentation.
+// Returns the initialized GORM database connection or an error if the connection or configuration fails.
 func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 	log.Info("Connecting to remote PostgreSQL database",
 		zap.String("host", config.Conf.DBHost),
 		zap.Int("port", config.Conf.DBPort),
 		zap.String("name", config.Conf.DBName))
 
-	dsn := fmt.Sprintf("user=%s password=%s host=%s dbname=%s port=%d sslmode=disable",
-		config.Conf.DBUser, config.Conf.DBPassword, config.Conf.DBHost, config.Conf.DBName, config.Conf.DBPort)
+	// Determine SSL mode based on environment
+	sslMode := "prefer"
+	// if config.Conf.Dev {
+	// 	sslMode = "prefer" // More lenient for development
+	// }
+
+	dsn := fmt.Sprintf("user=%s password=%s host=%s dbname=%s port=%d sslmode=%s",
+		config.Conf.DBUser, config.Conf.DBPassword, config.Conf.DBHost, config.Conf.DBName, config.Conf.DBPort, sslMode)
 
 	// Configure GORM
 	gormConfig := &gorm.Config{
@@ -106,6 +119,7 @@ func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 	conn, err := gorm.Open(postgres.Open(dsn), gormConfig)
 	if err != nil {
 		log.Error("Error connecting to PostgreSQL database", zap.Error(err))
+
 		return nil, err
 	}
 
@@ -119,6 +133,7 @@ func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 	}
 
 	log.Info("Connected to remote PostgreSQL database")
+
 	return conn, nil
 }
 
@@ -127,6 +142,7 @@ func configureDBConnection(conn *gorm.DB) error {
 	sqlDB, err := conn.DB()
 	if err != nil {
 		log.Error("Failed to get DB from GORM connection", zap.Error(err))
+
 		return err
 	}
 
@@ -158,15 +174,20 @@ func configureDBConnection(conn *gorm.DB) error {
 // Migrate performs automatic database schema migration.
 func Migrate() error {
 	log.Info("Starting database migration")
-	if err := DBConn.AutoMigrate(&models.Paste{}); err != nil {
+	err := DBConn.AutoMigrate(&models.Paste{})
+
+	if err != nil {
 		log.Error("Error migrating the database", zap.Error(err))
+
 		return err
 	}
+
 	log.Info("Database migration completed successfully")
+
 	return nil
 }
 
-// testConnection tests the database connection
+// testConnection tests the database connection.
 func testConnection(conn *gorm.DB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -183,10 +204,10 @@ func testConnection(conn *gorm.DB) error {
 	return nil
 }
 
-// HealthCheck performs a health check on the database connection
+// HealthCheck performs a health check on the database connection.
 func HealthCheck(ctx context.Context) error {
 	if DBConn == nil {
-		return fmt.Errorf("database connection is not initialized")
+		return errors.New("database connection is not initialized")
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -214,6 +235,7 @@ func HealthCheck(ctx context.Context) error {
 func Close() error {
 	if DBConn == nil {
 		log.Info("Database connection is already nil, nothing to close")
+
 		return nil
 	}
 
@@ -222,11 +244,13 @@ func Close() error {
 	sqlDB, err := DBConn.DB()
 	if err != nil {
 		log.Error("Failed to get DB from GORM connection", zap.Error(err))
+
 		return err
 	}
 
 	// Set a timeout for closing the connection
 	done := make(chan error, 1)
+
 	go func() {
 		done <- sqlDB.Close()
 	}()
@@ -235,12 +259,16 @@ func Close() error {
 	case err := <-done:
 		if err != nil {
 			log.Error("Error closing the database connection", zap.Error(err))
+
 			return err
 		}
+
 		log.Info("Database connection closed successfully")
+
 		return nil
 	case <-time.After(10 * time.Second):
 		log.Warn("Database connection close timed out")
-		return fmt.Errorf("database connection close timed out")
+
+		return errors.New("database connection close timed out")
 	}
 }

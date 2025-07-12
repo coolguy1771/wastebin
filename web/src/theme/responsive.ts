@@ -1,5 +1,5 @@
 import { useTheme, useMediaQuery } from '@mui/material';
-import { Breakpoint } from '@mui/material/styles';
+import { Breakpoint, Theme } from '@mui/material/styles';
 
 /**
  * Responsive design utilities and breakpoints
@@ -18,7 +18,13 @@ export const customBreakpoints = {
   wide: 1440,
 } as const;
 
-// Custom hook for responsive values
+/**
+ * Provides boolean flags for common responsive breakpoints and exposes the current Material-UI theme.
+ *
+ * Returns an object with flags indicating if the viewport matches mobile, tablet, desktop, large, extra-large, small mobile, or wide screen breakpoints, along with the theme object for custom breakpoint queries.
+ *
+ * @returns An object containing responsive breakpoint flags and the current theme.
+ */
 export function useResponsive() {
   const theme = useTheme();
 
@@ -40,13 +46,7 @@ export function useResponsive() {
     isXLarge,
     isSmallMobile,
     isWideScreen,
-
-    // Utility functions
-    only: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.only(breakpoint)),
-    up: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.up(breakpoint)),
-    down: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.down(breakpoint)),
-    between: (start: Breakpoint, end: Breakpoint) =>
-      useMediaQuery(theme.breakpoints.between(start, end)),
+    theme, // Expose theme for external breakpoint queries
   };
 }
 
@@ -187,7 +187,22 @@ export const grid = {
   },
 } as const;
 
-// Helper function to get responsive values
+// Utility functions for breakpoint queries (use with theme from useResponsive hook)
+export const createBreakpointHelpers = (theme: Theme) => ({
+  only: (breakpoint: Breakpoint) => theme.breakpoints.only(breakpoint),
+  up: (breakpoint: Breakpoint) => theme.breakpoints.up(breakpoint),
+  down: (breakpoint: Breakpoint) => theme.breakpoints.down(breakpoint),
+  between: (start: Breakpoint, end: Breakpoint) => theme.breakpoints.between(start, end),
+});
+
+/**
+ * Returns an object mapping responsive breakpoint keys to the provided values for mobile, tablet, and desktop.
+ *
+ * @param mobileValue - The value to use for the mobile (`xs`) breakpoint
+ * @param tabletValue - Optional value for the tablet (`sm`) breakpoint
+ * @param desktopValue - Optional value for the desktop (`md`) breakpoint
+ * @returns An object with keys `xs`, and optionally `sm` and `md`, mapped to the corresponding values
+ */
 export function getResponsiveValue<T>(
   mobileValue: T,
   tabletValue?: T,

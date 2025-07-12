@@ -14,7 +14,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
-// MetricsConfig holds configuration for metrics collection
+// MetricsConfig holds configuration for metrics collection.
 type MetricsConfig struct {
 	Enabled  bool   `koanf:"METRICS_ENABLED"`
 	Endpoint string `koanf:"OTLP_METRICS_ENDPOINT"`
@@ -22,7 +22,7 @@ type MetricsConfig struct {
 	Interval time.Duration `koanf:"METRICS_INTERVAL"`
 }
 
-// MetricsProvider manages the OpenTelemetry metrics setup
+// MetricsProvider manages the OpenTelemetry metrics setup.
 type MetricsProvider struct {
 	meter    metric.Meter
 	provider *sdkmetric.MeterProvider
@@ -40,7 +40,7 @@ type MetricsProvider struct {
 	SystemUptime        metric.Float64Gauge
 }
 
-// NewMetricsProvider creates a new metrics provider with the given configuration
+// NewMetricsProvider creates a new metrics provider with the given configuration.
 func NewMetricsProvider(config MetricsConfig, serviceName, version, environment string) (*MetricsProvider, error) {
 	if !config.Enabled {
 		// Return a no-op provider if metrics are disabled
@@ -103,7 +103,7 @@ func NewMetricsProvider(config MetricsConfig, serviceName, version, environment 
 	return provider, nil
 }
 
-// initializeMetrics creates all the application-specific metrics
+// initializeMetrics creates all the application-specific metrics.
 func (mp *MetricsProvider) initializeMetrics() error {
 	var err error
 
@@ -188,22 +188,23 @@ func (mp *MetricsProvider) initializeMetrics() error {
 	return nil
 }
 
-// Meter returns the OpenTelemetry meter
+// Meter returns the OpenTelemetry meter.
 func (mp *MetricsProvider) Meter() metric.Meter {
 	return mp.meter
 }
 
-// Shutdown gracefully shuts down the metrics provider
+// Shutdown gracefully shuts down the metrics provider.
 func (mp *MetricsProvider) Shutdown(ctx context.Context) error {
 	if mp.provider != nil {
 		return mp.provider.Shutdown(ctx)
 	}
+
 	return nil
 }
 
 // Convenience methods for common metrics operations
 
-// RecordHTTPRequest records metrics for an HTTP request
+// RecordHTTPRequest records metrics for an HTTP request.
 func (mp *MetricsProvider) RecordHTTPRequest(ctx context.Context, method, path, status string, duration time.Duration) {
 	if mp.config.Enabled {
 		attributes := metric.WithAttributes(
@@ -217,21 +218,21 @@ func (mp *MetricsProvider) RecordHTTPRequest(ctx context.Context, method, path, 
 	}
 }
 
-// IncrementActiveRequests increments the active HTTP requests counter
+// IncrementActiveRequests increments the active HTTP requests counter.
 func (mp *MetricsProvider) IncrementActiveRequests(ctx context.Context) {
 	if mp.config.Enabled {
 		mp.HTTPActiveRequests.Add(ctx, 1)
 	}
 }
 
-// DecrementActiveRequests decrements the active HTTP requests counter
+// DecrementActiveRequests decrements the active HTTP requests counter.
 func (mp *MetricsProvider) DecrementActiveRequests(ctx context.Context) {
 	if mp.config.Enabled {
 		mp.HTTPActiveRequests.Add(ctx, -1)
 	}
 }
 
-// RecordDBQuery records metrics for a database query
+// RecordDBQuery records metrics for a database query.
 func (mp *MetricsProvider) RecordDBQuery(ctx context.Context, operation string, duration time.Duration) {
 	if mp.config.Enabled {
 		attributes := metric.WithAttributes(
@@ -241,14 +242,14 @@ func (mp *MetricsProvider) RecordDBQuery(ctx context.Context, operation string, 
 	}
 }
 
-// UpdateDBConnections updates the active database connections gauge
+// UpdateDBConnections updates the active database connections gauge.
 func (mp *MetricsProvider) UpdateDBConnections(ctx context.Context, count int64) {
 	if mp.config.Enabled {
 		mp.DBConnectionsActive.Add(ctx, count)
 	}
 }
 
-// RecordPasteCreated increments the paste created counter
+// RecordPasteCreated increments the paste created counter.
 func (mp *MetricsProvider) RecordPasteCreated(ctx context.Context, language string) {
 	if mp.config.Enabled {
 		attributes := metric.WithAttributes(
@@ -258,7 +259,7 @@ func (mp *MetricsProvider) RecordPasteCreated(ctx context.Context, language stri
 	}
 }
 
-// RecordPasteViewed increments the paste viewed counter
+// RecordPasteViewed increments the paste viewed counter.
 func (mp *MetricsProvider) RecordPasteViewed(ctx context.Context, language string) {
 	if mp.config.Enabled {
 		attributes := metric.WithAttributes(
@@ -268,7 +269,7 @@ func (mp *MetricsProvider) RecordPasteViewed(ctx context.Context, language strin
 	}
 }
 
-// RecordPasteDeleted increments the paste deleted counter
+// RecordPasteDeleted increments the paste deleted counter.
 func (mp *MetricsProvider) RecordPasteDeleted(ctx context.Context, reason string) {
 	if mp.config.Enabled {
 		attributes := metric.WithAttributes(
@@ -278,7 +279,7 @@ func (mp *MetricsProvider) RecordPasteDeleted(ctx context.Context, reason string
 	}
 }
 
-// UpdateSystemUptime updates the system uptime gauge
+// UpdateSystemUptime updates the system uptime gauge.
 func (mp *MetricsProvider) UpdateSystemUptime(ctx context.Context, uptime time.Duration) {
 	if mp.config.Enabled {
 		mp.SystemUptime.Record(ctx, uptime.Seconds())

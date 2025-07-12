@@ -29,6 +29,7 @@ func TestConnectSQLite(t *testing.T) {
 	setupTestConfig(true) // Set LocalDB to true
 
 	err := Connect(nil)
+
 	defer Close()
 
 	assert.NoError(t, err, "Expected no error when connecting to SQLite")
@@ -49,6 +50,7 @@ func TestConnectPostgres(t *testing.T) {
 	DBConn = conn
 
 	err = Connect(nil)
+
 	defer Close()
 
 	assert.NoError(t, err, "Expected no error when connecting to PostgreSQL (mocked with SQLite)")
@@ -77,6 +79,7 @@ func TestMigrate(t *testing.T) {
 
 	err := Connect(nil)
 	assert.NoError(t, err, "Expected no error when connecting to SQLite")
+
 	defer Close()
 
 	err = Migrate()

@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// HTTPMiddleware creates middleware for HTTP request tracing and metrics
+// HTTPMiddleware creates middleware for HTTP request tracing and metrics.
 func (p *Provider) HTTPMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		// Wrap with OpenTelemetry HTTP instrumentation
@@ -77,9 +77,10 @@ func (p *Provider) HTTPMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// wrappedResponseWriter wraps http.ResponseWriter to capture metrics
+// wrappedResponseWriter wraps http.ResponseWriter to capture metrics.
 type wrappedResponseWriter struct {
 	http.ResponseWriter
+
 	statusCode   int
 	bytesWritten int64
 }
@@ -92,10 +93,11 @@ func (w *wrappedResponseWriter) WriteHeader(statusCode int) {
 func (w *wrappedResponseWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
 	w.bytesWritten += int64(n)
+
 	return n, err
 }
 
-// getRoutePattern extracts the route pattern from the request context
+// getRoutePattern extracts the route pattern from the request context.
 func getRoutePattern(r *http.Request) string {
 	// Try to get the route pattern from chi context
 	if rctx := chi.RouteContext(r.Context()); rctx != nil {
@@ -106,7 +108,7 @@ func getRoutePattern(r *http.Request) string {
 	return r.URL.Path
 }
 
-// HealthCheckMiddleware provides observability for health check endpoints
+// HealthCheckMiddleware provides observability for health check endpoints.
 func (p *Provider) HealthCheckMiddleware() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, span := p.TracingProvider.StartSpan(r.Context(), "health_check")
@@ -131,7 +133,7 @@ func (p *Provider) HealthCheckMiddleware() http.HandlerFunc {
 	}
 }
 
-// DatabaseMiddleware wraps database operations with observability
+// DatabaseMiddleware wraps database operations with observability.
 func (p *Provider) DatabaseMiddleware() func(operation string) func() {
 	return func(operation string) func() {
 		start := time.Now()

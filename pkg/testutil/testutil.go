@@ -23,7 +23,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// TestServer represents a test server instance
+// TestServer represents a test server instance.
 type TestServer struct {
 	Server *httptest.Server
 	Router http.Handler
@@ -31,13 +31,13 @@ type TestServer struct {
 	t      *testing.T
 }
 
-// TestConfig holds test configuration
+// TestConfig holds test configuration.
 type TestConfig struct {
 	UseInMemoryDB bool
 	EnableLogging bool
 }
 
-// NewTestServer creates a new test server with provided router
+// NewTestServer creates a new test server with provided router.
 func NewTestServer(t *testing.T, router http.Handler, cfg *TestConfig) *TestServer {
 	if cfg == nil {
 		cfg = &TestConfig{
@@ -63,9 +63,10 @@ func NewTestServer(t *testing.T, router http.Handler, cfg *TestConfig) *TestServ
 	}
 }
 
-// Close closes the test server and cleans up resources
+// Close closes the test server and cleans up resources.
 func (ts *TestServer) Close() {
 	ts.Server.Close()
+
 	if ts.DB != nil {
 		sqlDB, _ := ts.DB.DB()
 		if sqlDB != nil {
@@ -74,15 +75,17 @@ func (ts *TestServer) Close() {
 	}
 }
 
-// URL returns the base URL of the test server
+// URL returns the base URL of the test server.
 func (ts *TestServer) URL() string {
 	return ts.Server.URL
 }
 
-// setupTestDB sets up a test database
+// setupTestDB sets up a test database.
 func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
-	var db *gorm.DB
-	var err error
+	var (
+		db  *gorm.DB
+		err error
+	)
 
 	if useInMemory {
 		// Use in-memory SQLite for tests
@@ -100,6 +103,7 @@ func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 			if sqlDB != nil {
 				sqlDB.Close()
 			}
+
 			os.Remove(tempDB)
 		})
 	}
@@ -114,7 +118,7 @@ func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 	return db
 }
 
-// setupTestConfig sets up test configuration
+// setupTestConfig sets up test configuration.
 func setupTestConfig(enableLogging bool) {
 	config.Conf = config.Config{
 		WebappPort:     "3000",
@@ -134,7 +138,7 @@ func setupTestConfig(enableLogging bool) {
 	}
 }
 
-// CreateTestPaste creates a test paste in the database
+// CreateTestPaste creates a test paste in the database.
 func (ts *TestServer) CreateTestPaste(content, language string, expiryMinutes int, burn bool) *models.Paste {
 	paste := &models.Paste{
 		UUID:            uuid.New(),
@@ -150,7 +154,7 @@ func (ts *TestServer) CreateTestPaste(content, language string, expiryMinutes in
 	return paste
 }
 
-// HTTPRequest represents an HTTP request for testing
+// HTTPRequest represents an HTTP request for testing.
 type HTTPRequest struct {
 	Method      string
 	Path        string
@@ -160,7 +164,7 @@ type HTTPRequest struct {
 	FormData    map[string]string
 }
 
-// HTTPResponse represents an HTTP response for testing
+// HTTPResponse represents an HTTP response for testing.
 type HTTPResponse struct {
 	StatusCode int
 	Headers    http.Header
@@ -168,7 +172,7 @@ type HTTPResponse struct {
 	JSON       map[string]interface{}
 }
 
-// MakeRequest makes an HTTP request to the test server
+// MakeRequest makes an HTTP request to the test server.
 func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 	var bodyReader io.Reader
 
@@ -194,10 +198,13 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 		for key, value := range req.FormData {
 			formValues.Set(key, value)
 		}
+
 		bodyReader = strings.NewReader(formValues.Encode())
+
 		if req.Headers == nil {
 			req.Headers = make(map[string]string)
 		}
+
 		req.Headers["Content-Type"] = "application/x-www-form-urlencoded"
 	}
 
@@ -216,6 +223,7 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 		for key, value := range req.QueryParams {
 			q.Add(key, value)
 		}
+
 		httpReq.URL.RawQuery = q.Encode()
 	}
 
@@ -223,6 +231,7 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(httpReq)
 	require.NoError(ts.t, err, "Failed to make HTTP request")
+
 	defer resp.Body.Close()
 
 	// Read response body
@@ -238,7 +247,8 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 	// Try to parse JSON
 	if len(body) > 0 && strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 		var jsonBody map[string]interface{}
-		if err := json.Unmarshal(body, &jsonBody); err == nil {
+		err := json.Unmarshal(body, &jsonBody)
+		if err == nil {
 			response.JSON = jsonBody
 		}
 	}
@@ -246,7 +256,7 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 	return response
 }
 
-// AssertJSONResponse asserts that the response contains expected JSON
+// AssertJSONResponse asserts that the response contains expected JSON.
 func (ts *TestServer) AssertJSONResponse(resp *HTTPResponse, expectedStatus int, expectedFields map[string]interface{}) {
 	require.Equal(ts.t, expectedStatus, resp.StatusCode, "Unexpected status code")
 	require.NotNil(ts.t, resp.JSON, "Response is not JSON")
@@ -258,7 +268,7 @@ func (ts *TestServer) AssertJSONResponse(resp *HTTPResponse, expectedStatus int,
 	}
 }
 
-// AssertError asserts that the response is an error with expected message
+// AssertError asserts that the response is an error with expected message.
 func (ts *TestServer) AssertError(resp *HTTPResponse, expectedStatus int, expectedError string) {
 	require.Equal(ts.t, expectedStatus, resp.StatusCode, "Unexpected status code")
 	require.NotNil(ts.t, resp.JSON, "Response is not JSON")
@@ -268,7 +278,7 @@ func (ts *TestServer) AssertError(resp *HTTPResponse, expectedStatus int, expect
 	require.Equal(ts.t, expectedError, errorMsg, "Unexpected error message")
 }
 
-// WaitForCondition waits for a condition to be true with timeout
+// WaitForCondition waits for a condition to be true with timeout.
 func WaitForCondition(t *testing.T, condition func() bool, timeout time.Duration, message string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -279,7 +289,7 @@ func WaitForCondition(t *testing.T, condition func() bool, timeout time.Duration
 	for {
 		select {
 		case <-ctx.Done():
-			require.Fail(t, fmt.Sprintf("Condition not met within timeout: %s", message))
+			require.Fail(t, "Condition not met within timeout: "+message)
 		case <-ticker.C:
 			if condition() {
 				return
@@ -288,29 +298,32 @@ func WaitForCondition(t *testing.T, condition func() bool, timeout time.Duration
 	}
 }
 
-// GetPasteFromDB retrieves a paste from the database by UUID
+// GetPasteFromDB retrieves a paste from the database by UUID.
 func (ts *TestServer) GetPasteFromDB(pasteUUID uuid.UUID) *models.Paste {
 	var paste models.Paste
+
 	err := ts.DB.First(&paste, "uuid = ?", pasteUUID).Error
 	if err != nil {
 		return nil
 	}
+
 	return &paste
 }
 
-// CountPastesInDB returns the number of pastes in the database
+// CountPastesInDB returns the number of pastes in the database.
 func (ts *TestServer) CountPastesInDB() int64 {
 	var count int64
 	ts.DB.Model(&models.Paste{}).Count(&count)
+
 	return count
 }
 
-// CleanupPastes removes all pastes from the database
+// CleanupPastes removes all pastes from the database.
 func (ts *TestServer) CleanupPastes() {
 	ts.DB.Exec("DELETE FROM pastes")
 }
 
-// CreateExpiredPaste creates an expired paste for testing
+// CreateExpiredPaste creates an expired paste for testing.
 func (ts *TestServer) CreateExpiredPaste() *models.Paste {
 	paste := &models.Paste{
 		UUID:            uuid.New(),
@@ -326,7 +339,7 @@ func (ts *TestServer) CreateExpiredPaste() *models.Paste {
 	return paste
 }
 
-// MockTimeNow can be used to mock time.Now() in tests
+// MockTimeNow can be used to mock time.Now() in tests.
 type MockTime struct {
 	current time.Time
 }
@@ -343,7 +356,7 @@ func (m *MockTime) Add(d time.Duration) {
 	m.current = m.current.Add(d)
 }
 
-// TestData contains commonly used test data
+// TestData contains commonly used test data.
 var TestData = struct {
 	ValidPasteContent   string
 	ValidLanguage       string

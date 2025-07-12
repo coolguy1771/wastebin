@@ -115,7 +115,7 @@ output:
       path: ./golangci-lint-report.sarif
 
   # Configure path handling
-  path-mode: "rel" # Use relative paths for better portability
+  path-mode: "" # Use relative paths for better portability
   path-prefix: ""
 
   # Sort results for consistent output
