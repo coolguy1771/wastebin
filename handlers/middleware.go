@@ -27,11 +27,14 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Skip CSRF protection for API endpoints if API key is present
+		// Skip CSRF protection for API endpoints only if using API key authentication
 		if strings.HasPrefix(r.URL.Path, "/api/") {
-			// For API endpoints, we can use other authentication mechanisms
-			next.ServeHTTP(w, r)
-			return
+			// Check if request uses API key authentication
+			if r.Header.Get("X-API-Key") != "" || r.Header.Get("Authorization") != "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// For cookie-based API auth, continue with CSRF validation
 		}
 
 		// Generate and validate CSRF token for web forms using double-submit cookie pattern
