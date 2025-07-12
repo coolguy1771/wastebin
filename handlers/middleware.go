@@ -18,7 +18,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// CSRFProtectionMiddleware provides CSRF protection for state-changing operations
+// CSRFProtectionMiddleware enforces CSRF protection on state-changing HTTP requests using the double-submit cookie pattern.
+// 
+// This middleware validates CSRF tokens for non-GET/HEAD/OPTIONS requests, except for API endpoints authenticated via API key or Authorization header. It retrieves or creates a session ID cookie, extracts the CSRF token from the request, and verifies it using HMAC with a configured secret key. Requests failing validation receive a 403 Forbidden response.
 func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Skip CSRF protection for GET, HEAD, OPTIONS requests
@@ -68,7 +70,8 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RequestSizeLimitMiddleware limits the size of incoming requests
+// RequestSizeLimitMiddleware returns middleware that limits the size of incoming HTTP request bodies to the specified maximum number of bytes.
+// If a request exceeds the limit, the server responds with HTTP 413 Request Entity Too Large.
 func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +83,7 @@ func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Hand
 	}
 }
 
-// SecurityHeadersMiddleware adds security headers to all responses
+// SecurityHeadersMiddleware adds HTTP headers to each response to enforce security best practices, including protections against MIME sniffing, clickjacking, cross-site scripting, and improper referrer or permissions usage. It also sets a strict Content Security Policy and enables HSTS for HTTPS requests.
 func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Security headers
@@ -109,7 +112,9 @@ func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// BasicAuthMiddleware provides optional basic authentication
+// BasicAuthMiddleware enforces HTTP Basic Authentication if enabled in configuration.
+// If authentication is required, it validates credentials using constant-time comparison and rejects unauthorized requests with a 401 response and a WWW-Authenticate header.
+// Logs authentication attempts and passes control to the next handler on successful authentication or if authentication is not required.
 func BasicAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !config.Conf.RequireAuth {
@@ -146,7 +151,7 @@ func BasicAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// SecurityAuditMiddleware logs security events
+// SecurityAuditMiddleware logs security-related HTTP events such as rate limiting, unauthorized, and forbidden access attempts after the response is sent. It captures the response status code and logs relevant request metadata for auditing purposes.
 func SecurityAuditMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wrap response writer to capture status code
@@ -190,6 +195,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+// getRealIP extracts the client's real IP address from the HTTP request headers or falls back to the remote address.
+// It checks the X-Forwarded-For and X-Real-IP headers, returning the first valid IP found, or the RemoteAddr if none are set.
 func getRealIP(r *http.Request) string {
 	// Check X-Forwarded-For header first
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
@@ -215,7 +222,8 @@ const (
 	csrfCookieName = "wastebin_csrf"
 )
 
-// getOrCreateSessionID gets the session ID from cookie or creates a new one
+// getOrCreateSessionID retrieves the session ID from the session cookie or generates and sets a new secure session ID cookie if none exists.
+// Returns the session ID string, or an error if session ID generation fails.
 func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) (string, error) {
 	// Try to get existing session ID from cookie
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
@@ -245,7 +253,8 @@ func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) (string, error
 	return sessionID, nil
 }
 
-// generateSecureRandomString generates a cryptographically secure random string
+// generateSecureRandomString returns a cryptographically secure random string of the specified byte length, hex-encoded.
+// Returns an error if random data generation fails.
 func generateSecureRandomString(length int) (string, error) {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
@@ -255,7 +264,7 @@ func generateSecureRandomString(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// generateCSRFToken creates a secure CSRF token using HMAC with timestamp
+// generateCSRFToken returns a base64-encoded CSRF token containing the session ID, current timestamp, and an HMAC-SHA256 signature using the provided secret key.
 func generateCSRFToken(sessionID, secretKey string) string {
 	timestamp := time.Now().Unix()
 	message := fmt.Sprintf("%s:%d", sessionID, timestamp)
@@ -270,7 +279,8 @@ func generateCSRFToken(sessionID, secretKey string) string {
 	return base64.StdEncoding.EncodeToString([]byte(token))
 }
 
-// validateCSRFToken validates a CSRF token using HMAC and checks expiration
+// validateCSRFToken verifies the validity of a CSRF token by checking its format, matching the session ID, ensuring it is not expired, and confirming the HMAC signature using the provided secret key.
+// Returns true if the token is valid and unexpired; false otherwise.
 func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
 	if tokenStr == "" || sessionID == "" || secretKey == "" {
 		return false
@@ -324,7 +334,8 @@ func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
 	return subtle.ConstantTimeCompare([]byte(providedSignature), []byte(expectedSignature)) == 1
 }
 
-// GetCSRFToken generates a new CSRF token for the current session (for use in templates/frontend)
+// GetCSRFToken generates and returns a CSRF token for the current session, setting it as a cookie for use in frontend applications.
+// Returns an empty string if the CSRF key is not configured or session ID generation fails.
 func GetCSRFToken(w http.ResponseWriter, r *http.Request) string {
 	if config.Conf.CSRFKey == "" {
 		return ""

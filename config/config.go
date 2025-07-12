@@ -59,7 +59,7 @@ type Config struct {
 	MetricsInterval     int    `koanf:"METRICS_INTERVAL"` // in seconds
 }
 
-// Load initializes the configuration by loading defaults and environment variables.
+// Load initializes the application configuration by merging default values with environment variables, unmarshaling them into the global Config, validating the result, and returning a pointer to the loaded configuration. The application terminates if loading or validation fails.
 func Load() *Config {
 	k := koanf.New(".")
 
