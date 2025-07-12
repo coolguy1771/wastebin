@@ -69,7 +69,7 @@ services:
 
   # OpenTelemetry Collector - Centralized Observability Data Processing
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.119.0
+    image: otel/opentelemetry-collector-contrib:0.129.1@sha256:4798e3095561ac8ae13a81965088d68b943b1991bbeede91b1564e12c95372cc
     ports:
       - "8888:8888"     # Prometheus metrics exposed by the collector
       - "8889:8889"     # Prometheus exporter metrics
