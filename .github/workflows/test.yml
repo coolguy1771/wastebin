@@ -153,7 +153,7 @@ jobs:
     needs: [unit-tests]
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -178,4 +178,4 @@ jobs:
           tool: 'go'
           output-file-path: benchmark.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
+          auto-push: false
