@@ -167,8 +167,12 @@ export const getMemoryUsage = (): { used: number; total: number; limit: number }
   if ('memory' in performance) {
     return {
       used: Math.round((performance as PerformanceWithMemory).memory.usedJSHeapSize / 1024 / 1024),
-      total: Math.round((performance as PerformanceWithMemory).memory.totalJSHeapSize / 1024 / 1024),
-      limit: Math.round((performance as PerformanceWithMemory).memory.jsHeapSizeLimit / 1024 / 1024),
+      total: Math.round(
+        (performance as PerformanceWithMemory).memory.totalJSHeapSize / 1024 / 1024
+      ),
+      limit: Math.round(
+        (performance as PerformanceWithMemory).memory.jsHeapSizeLimit / 1024 / 1024
+      ),
     };
   }
   return null;

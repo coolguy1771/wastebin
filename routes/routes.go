@@ -9,7 +9,6 @@ import (
 
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/handlers"
-	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/observability"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -35,7 +34,7 @@ func initChiRouter(obs *observability.Provider) *chi.Mux {
 	r.Use(handlers.BasicAuthMiddleware)                   // Optional basic authentication
 	r.Use(handlers.CSRFProtectionMiddleware)              // CSRF protection for web forms
 
-	r.Use(handlers.ZapLogger(log.Default())) // Log the start and end of each request with the elapsed processing time
+	r.Use(middleware.Logger) // Log the start and end of each request with the elapsed processing time
 	r.Use(middleware.Recoverer)              // Recover from panics without crashing server
 	r.Use(middleware.Heartbeat("/healthz"))
 

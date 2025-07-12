@@ -72,15 +72,6 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Apply request size limit
-			if r.ContentLength > maxSize {
-				log.Warn("Request size exceeded limit",
-					zap.Int64("content_length", r.ContentLength),
-					zap.Int64("max_size", maxSize),
-					zap.String("remote_addr", r.RemoteAddr))
-				respondWithError(w, http.StatusRequestEntityTooLarge, "Request size exceeds limit")
-				return
-			}
 
 			// Wrap the request body with a limited reader
 			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
