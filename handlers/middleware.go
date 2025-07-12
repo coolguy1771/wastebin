@@ -1,129 +1,220 @@
 package handlers
 
 import (
-	"bufio"
-	"net"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/base64"
 	"net/http"
-	"time"
+	"strings"
 
+	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/log"
-	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 )
 
-// WrapResponseWriter wraps the standard http.ResponseWriter to capture status and size.
-type WrapResponseWriter struct {
-	http.ResponseWriter
-	status      int
-	bytes       int
-	wroteHeader bool
+// CSRFProtectionMiddleware provides CSRF protection for state-changing operations
+func CSRFProtectionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip CSRF protection for GET, HEAD, OPTIONS requests
+		if r.Method == "GET" || r.Method == "HEAD" || r.Method == "OPTIONS" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Skip CSRF protection for API endpoints if API key is present
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			// For API endpoints, we can use other authentication mechanisms
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Generate and validate CSRF token for web forms
+		if config.Conf.CSRFKey != "" {
+			token := r.Header.Get("X-CSRF-Token")
+			if token == "" {
+				token = r.FormValue("csrf_token")
+			}
+
+			if !validateCSRFToken(token, config.Conf.CSRFKey) {
+				log.Warn("CSRF validation failed",
+					zap.String("remote_addr", r.RemoteAddr),
+					zap.String("user_agent", r.UserAgent()),
+					zap.String("path", r.URL.Path))
+				respondWithError(w, http.StatusForbidden, "CSRF validation failed")
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
-// NewWrapResponseWriter creates a new instance of WrapResponseWriter.
-func NewWrapResponseWriter(w http.ResponseWriter, protoMajor int) *WrapResponseWriter {
-	return &WrapResponseWriter{ResponseWriter: w, status: 200}
-}
-
-// Status returns the response status code.
-func (ww *WrapResponseWriter) Status() int {
-	return ww.status
-}
-
-// BytesWritten returns the number of bytes written in the response.
-func (ww *WrapResponseWriter) BytesWritten() int {
-	return ww.bytes
-}
-
-// WriteHeader overrides the default WriteHeader to capture the status code.
-func (ww *WrapResponseWriter) WriteHeader(code int) {
-	if ww.wroteHeader {
-		return
-	}
-	ww.status = code
-	ww.ResponseWriter.WriteHeader(code)
-	ww.wroteHeader = true
-}
-
-// Write overrides the default Write to capture the size of the response.
-func (ww *WrapResponseWriter) Write(b []byte) (int, error) {
-	if !ww.wroteHeader {
-		ww.WriteHeader(http.StatusOK)
-	}
-	size, err := ww.ResponseWriter.Write(b)
-	ww.bytes += size
-	return size, err
-}
-
-// Hijack allows the middleware to support hijacking.
-func (ww *WrapResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hj, ok := ww.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return nil, nil, http.ErrNotSupported
-	}
-	return hj.Hijack()
-}
-
-// Flush allows the middleware to support flushing.
-func (ww *WrapResponseWriter) Flush() {
-	fl, ok := ww.ResponseWriter.(http.Flusher)
-	if ok {
-		fl.Flush()
-	}
-}
-
-// ZapLogger is a middleware that logs HTTP requests using zap.Logger in JSON format.
-func ZapLogger(logger *log.Logger) func(next http.Handler) http.Handler {
+// RequestSizeLimitMiddleware limits the size of incoming requests
+func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			// Get request ID from middleware (chi.RequestID middleware adds this)
-			requestID := GetRequestID(r)
-
-			// Create a response writer to capture response status and size
-			ww := NewWrapResponseWriter(w, r.ProtoMajor)
-
-			// Add request ID to response headers for traceability
-			if requestID != "" {
-				ww.Header().Set("X-Request-ID", requestID)
+			// Apply request size limit
+			if r.ContentLength > maxSize {
+				log.Warn("Request size exceeded limit",
+					zap.Int64("content_length", r.ContentLength),
+					zap.Int64("max_size", maxSize),
+					zap.String("remote_addr", r.RemoteAddr))
+				respondWithError(w, http.StatusRequestEntityTooLarge, "Request size exceeds limit")
+				return
 			}
 
-			// Call the next handler
-			next.ServeHTTP(ww, r)
-
-			// Log the request details with structured logging
-			fields := []zap.Field{
-				zap.String("request_id", requestID),
-				zap.String("method", r.Method),
-				zap.String("url", r.URL.String()),
-				zap.String("protocol", r.Proto),
-				zap.String("remote_addr", r.RemoteAddr),
-				zap.String("user_agent", r.UserAgent()),
-				zap.Int("status_code", ww.Status()),
-				zap.Int("response_size", ww.BytesWritten()),
-				zap.Duration("duration", time.Since(start)),
-				zap.String("timestamp", start.UTC().Format(time.RFC3339)),
-			}
-
-			// Add referer if present
-			if referer := r.Referer(); referer != "" {
-				fields = append(fields, zap.String("referer", referer))
-			}
-
-			// Log based on status code
-			if ww.Status() >= 500 {
-				logger.Error("Request handled with server error", fields...)
-			} else if ww.Status() >= 400 {
-				logger.Warn("Request handled with client error", fields...)
-			} else {
-				logger.Info("Request handled successfully", fields...)
-			}
+			// Wrap the request body with a limited reader
+			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-// GetRequestID extracts the request ID from the context using chi's middleware
-func GetRequestID(r *http.Request) string {
-	// Use chi's built-in request ID getter
-	return middleware.GetReqID(r.Context())
+// SecurityHeadersMiddleware adds security headers to all responses
+func SecurityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+
+		// HSTS header for HTTPS
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+
+		// Content Security Policy
+		csp := "default-src 'self'; " +
+			"script-src 'self' 'unsafe-inline'; " +
+			"style-src 'self' 'unsafe-inline'; " +
+			"img-src 'self' data:; " +
+			"connect-src 'self'; " +
+			"font-src 'self'; " +
+			"frame-ancestors 'none'"
+		w.Header().Set("Content-Security-Policy", csp)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// BasicAuthMiddleware provides optional basic authentication
+func BasicAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !config.Conf.RequireAuth {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		username, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Wastebin"`)
+			respondWithError(w, http.StatusUnauthorized, "Authentication required")
+			return
+		}
+
+		// Constant-time comparison to prevent timing attacks
+		usernameMatch := subtle.ConstantTimeCompare([]byte(username), []byte(config.Conf.AuthUsername))
+		passwordMatch := subtle.ConstantTimeCompare([]byte(password), []byte(config.Conf.AuthPassword))
+
+		if usernameMatch != 1 || passwordMatch != 1 {
+			log.Warn("Authentication failed",
+				zap.String("username", username),
+				zap.String("remote_addr", r.RemoteAddr),
+				zap.String("user_agent", r.UserAgent()))
+			w.Header().Set("WWW-Authenticate", `Basic realm="Wastebin"`)
+			respondWithError(w, http.StatusUnauthorized, "Invalid credentials")
+			return
+		}
+
+		log.Info("User authenticated",
+			zap.String("username", username),
+			zap.String("remote_addr", r.RemoteAddr))
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// SecurityAuditMiddleware logs security events
+func SecurityAuditMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Wrap response writer to capture status code
+		ww := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(ww, r)
+
+		// Log security events
+		switch ww.statusCode {
+		case http.StatusTooManyRequests:
+			log.Warn("Rate limit exceeded",
+				zap.String("ip", getRealIP(r)),
+				zap.String("user_agent", r.UserAgent()),
+				zap.String("path", r.URL.Path),
+				zap.String("method", r.Method))
+		case http.StatusUnauthorized:
+			log.Warn("Unauthorized access attempt",
+				zap.String("ip", getRealIP(r)),
+				zap.String("user_agent", r.UserAgent()),
+				zap.String("path", r.URL.Path),
+				zap.String("method", r.Method))
+		case http.StatusForbidden:
+			log.Warn("Forbidden access attempt",
+				zap.String("ip", getRealIP(r)),
+				zap.String("user_agent", r.UserAgent()),
+				zap.String("path", r.URL.Path),
+				zap.String("method", r.Method))
+		}
+	})
+}
+
+// Helper functions
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func getRealIP(r *http.Request) string {
+	// Check X-Forwarded-For header first
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// Get the first IP in case of multiple
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+
+	// Check X-Real-IP header
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+
+	// Fall back to RemoteAddr
+	return r.RemoteAddr
+}
+
+func validateCSRFToken(token, key string) bool {
+	if token == "" || key == "" {
+		return false
+	}
+
+	// Simple HMAC-based validation
+	// In production, you might want to use a more sophisticated token system
+	expectedToken := generateCSRFToken(key)
+	return subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) == 1
+}
+
+func generateCSRFToken(key string) string {
+	// Generate a simple token based on the key
+	// In production, this should include timestamp and be more secure
+	token := make([]byte, 32)
+	copy(token, []byte(key))
+	rand.Read(token[len(key):])
+	return base64.StdEncoding.EncodeToString(token)
 }

@@ -32,6 +32,19 @@ type Config struct {
 	Dev        bool   `koanf:"DEV"`
 	LocalDB    bool   `koanf:"LOCAL_DB"`
 
+	// TLS configuration
+	TLSEnabled  bool   `koanf:"TLS_ENABLED"`
+	TLSCertFile string `koanf:"TLS_CERT_FILE"`
+	TLSKeyFile  string `koanf:"TLS_KEY_FILE"`
+
+	// Security configuration
+	AllowedOrigins    string `koanf:"ALLOWED_ORIGINS"`
+	RequireAuth       bool   `koanf:"REQUIRE_AUTH"`
+	AuthUsername      string `koanf:"AUTH_USERNAME"`
+	AuthPassword      string `koanf:"AUTH_PASSWORD"`
+	CSRFKey           string `koanf:"CSRF_KEY"`
+	MaxRequestSize    int64  `koanf:"MAX_REQUEST_SIZE"`
+
 	// Logger configuration
 	LogLevel string `koanf:"LOG_LEVEL"`
 
@@ -61,6 +74,15 @@ func Load() *Config {
 		"DB_NAME":               "wastebin",
 		"LOG_LEVEL":             "INFO",
 		"LOCAL_DB":              false,
+		"TLS_ENABLED":           false,
+		"TLS_CERT_FILE":         "",
+		"TLS_KEY_FILE":          "",
+		"ALLOWED_ORIGINS":       "",
+		"REQUIRE_AUTH":          false,
+		"AUTH_USERNAME":         "",
+		"AUTH_PASSWORD":         "",
+		"CSRF_KEY":              "",
+		"MAX_REQUEST_SIZE":      15728640, // 15MB
 		"TRACING_ENABLED":       true,
 		"METRICS_ENABLED":       true,
 		"SERVICE_NAME":          "wastebin",
@@ -143,6 +165,34 @@ func (c *Config) Validate() error {
 	}
 	if !validLevel {
 		errs = append(errs, fmt.Sprintf("log level must be one of: %v", validLogLevels))
+	}
+
+	// Validate TLS configuration
+	if c.TLSEnabled {
+		if c.TLSCertFile == "" {
+			errs = append(errs, "TLS certificate file is required when TLS is enabled")
+		}
+		if c.TLSKeyFile == "" {
+			errs = append(errs, "TLS key file is required when TLS is enabled")
+		}
+	}
+
+	// Validate authentication configuration
+	if c.RequireAuth {
+		if c.AuthUsername == "" {
+			errs = append(errs, "auth username is required when authentication is enabled")
+		}
+		if c.AuthPassword == "" {
+			errs = append(errs, "auth password is required when authentication is enabled")
+		}
+	}
+
+	// Validate request size limits
+	if c.MaxRequestSize < 1024*1024 { // Minimum 1MB
+		errs = append(errs, "max request size must be at least 1MB")
+	}
+	if c.MaxRequestSize > 100*1024*1024 { // Maximum 100MB
+		errs = append(errs, "max request size cannot exceed 100MB")
 	}
 
 	if len(errs) > 0 {

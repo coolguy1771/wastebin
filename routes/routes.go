@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -28,14 +29,16 @@ func initChiRouter(obs *observability.Provider) *chi.Mux {
 		r.Use(obs.HTTPMiddleware())
 	}
 
+	// Security middleware stack
+	r.Use(handlers.SecurityHeadersMiddleware)              // Add comprehensive security headers
+	r.Use(handlers.RequestSizeLimitMiddleware(config.Conf.MaxRequestSize)) // Global request size limits
+	r.Use(handlers.SecurityAuditMiddleware)               // Security audit logging
+	r.Use(handlers.BasicAuthMiddleware)                   // Optional basic authentication
+	r.Use(handlers.CSRFProtectionMiddleware)              // CSRF protection for web forms
+
 	r.Use(handlers.ZapLogger(log.Default())) // Log the start and end of each request with the elapsed processing time
 	r.Use(middleware.Recoverer)              // Recover from panics without crashing server
 	r.Use(middleware.Heartbeat("/healthz"))
-
-	// Add security headers
-	r.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
-	r.Use(middleware.SetHeader("X-Frame-Options", "DENY"))
-	r.Use(middleware.SetHeader("X-XSS-Protection", "1; mode=block"))
 
 	// Add rate limiting
 	r.Use(httprate.LimitByIP(100, 1*time.Minute)) // 100 requests per minute per IP
@@ -50,12 +53,12 @@ func initChiRouter(obs *observability.Provider) *chi.Mux {
 func AddRoutes(obs *observability.Provider) *chi.Mux {
 	r := initChiRouter(obs)
 
-	// Apply CORS middleware globally
+	// Apply CORS middleware globally with secure configuration
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "DELETE"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		AllowedOrigins:   getAllowedOrigins(),
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"},
+		ExposedHeaders:   []string{"X-Request-ID", "X-API-Version"},
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
@@ -147,19 +150,31 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 
 // getAllowedOrigins returns CORS allowed origins based on configuration
 func getAllowedOrigins() []string {
+	// Check for explicitly configured origins
+	if config.Conf.AllowedOrigins != "" {
+		origins := strings.Split(config.Conf.AllowedOrigins, ",")
+		// Trim whitespace from each origin
+		for i, origin := range origins {
+			origins[i] = strings.TrimSpace(origin)
+		}
+		return origins
+	}
+
 	if config.Conf.Dev {
-		// Allow localhost for development
+		// Allow localhost and common development ports
 		return []string{
-			"http://localhost:*",
-			"http://127.0.0.1:*",
-			"https://localhost:*",
-			"https://127.0.0.1:*",
+			"http://localhost:3000",
+			"http://localhost:5173",
+			"http://127.0.0.1:3000",
+			"http://127.0.0.1:5173",
+			"https://localhost:3000",
+			"https://localhost:5173",
 		}
 	}
-	// In production, should be configured to specific domains
-	// For now, allowing all origins for backward compatibility
-	// TODO: Configure specific allowed origins via environment variable
-	return []string{"*"}
+
+	// In production, default to no origins if not explicitly configured
+	// This is more secure than allowing all origins
+	return []string{}
 }
 
 // APIVersionMiddleware handles API versioning

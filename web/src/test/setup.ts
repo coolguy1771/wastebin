@@ -88,7 +88,7 @@ Object.defineProperty(window, 'sessionStorage', {
 // Mock crypto for security utilities
 Object.defineProperty(global, 'crypto', {
   value: {
-    getRandomValues: vi.fn((arr: any) => {
+    getRandomValues: vi.fn((arr: Uint8Array | Uint16Array | Uint32Array) => {
       for (let i = 0; i < arr.length; i++) {
         arr[i] = Math.floor(Math.random() * 256);
       }

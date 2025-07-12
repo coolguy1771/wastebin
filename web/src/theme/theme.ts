@@ -231,7 +231,7 @@ const createLightTheme = (): ThemeOptions => ({
   },
   typography,
   shape,
-  shadows: shadows.light as any,
+  shadows: shadows.light,
 });
 
 // Create dark theme
@@ -283,7 +283,7 @@ const createDarkTheme = (): ThemeOptions => ({
   },
   typography,
   shape,
-  shadows: shadows.dark as any,
+  shadows: shadows.dark,
 });
 
 // Component overrides

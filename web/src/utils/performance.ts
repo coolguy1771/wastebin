@@ -126,7 +126,7 @@ export const collectWebVitals = (): Promise<WebVitals> => {
     // First Input Delay
     new PerformanceObserver(list => {
       const entries = list.getEntries();
-      entries.forEach((entry: any) => {
+      entries.forEach((entry: PerformanceEntry) => {
         vitals.fid = entry.processingStart - entry.startTime;
       });
     }).observe({ entryTypes: ['first-input'] });
@@ -135,7 +135,7 @@ export const collectWebVitals = (): Promise<WebVitals> => {
     let clsValue = 0;
     new PerformanceObserver(list => {
       const entries = list.getEntries();
-      entries.forEach((entry: any) => {
+      entries.forEach((entry: PerformanceEntry & { value?: number; hadRecentInput?: boolean }) => {
         if (!entry.hadRecentInput) {
           clsValue += entry.value;
         }
@@ -155,12 +155,20 @@ export const collectWebVitals = (): Promise<WebVitals> => {
 };
 
 // Memory usage monitoring
-export const getMemoryUsage = (): any => {
+interface PerformanceWithMemory extends Performance {
+  memory: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
+export const getMemoryUsage = (): { used: number; total: number; limit: number } | null => {
   if ('memory' in performance) {
     return {
-      used: Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024),
-      total: Math.round((performance as any).memory.totalJSHeapSize / 1024 / 1024),
-      limit: Math.round((performance as any).memory.jsHeapSizeLimit / 1024 / 1024),
+      used: Math.round((performance as PerformanceWithMemory).memory.usedJSHeapSize / 1024 / 1024),
+      total: Math.round((performance as PerformanceWithMemory).memory.totalJSHeapSize / 1024 / 1024),
+      limit: Math.round((performance as PerformanceWithMemory).memory.jsHeapSizeLimit / 1024 / 1024),
     };
   }
   return null;
@@ -189,7 +197,7 @@ export const logBundleInfo = (): void => {
   console.log(`JavaScript files: ${jsResources.length}`);
   console.log(`CSS files: ${cssResources.length}`);
 
-  const totalSize = resources.reduce((sum, resource: any) => {
+  const totalSize = resources.reduce((sum, resource: PerformanceResourceTiming) => {
     return sum + (resource.transferSize || 0);
   }, 0);
 
@@ -214,7 +222,7 @@ export const useRenderTime = (componentName: string) => {
 };
 
 // Lazy loading utilities
-export const createLazyComponent = <T extends React.ComponentType<any>>(
+export const createLazyComponent = <T extends React.ComponentType>(
   importFn: () => Promise<{ default: T }>,
   fallback?: React.ComponentType
 ) => {
@@ -233,15 +241,7 @@ export const createLazyComponent = <T extends React.ComponentType<any>>(
 };
 
 // Image optimization utilities
-export const optimizeImage = (
-  src: string,
-  _options: {
-    width?: number;
-    height?: number;
-    quality?: number;
-    format?: 'webp' | 'avif' | 'jpeg' | 'png';
-  } = {}
-): string => {
+export const optimizeImage = (src: string): string => {
   // This would typically integrate with an image optimization service
   // For now, return the original source
   return src;

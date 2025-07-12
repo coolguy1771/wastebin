@@ -116,7 +116,7 @@ const PastePage: React.FC = () => {
           title: 'Wastebin Paste',
           url: url,
         });
-      } catch (err) {
+      } catch {
         // Fallback to clipboard
         await navigator.clipboard.writeText(url);
         setCopySuccess(true);

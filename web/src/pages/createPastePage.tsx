@@ -268,7 +268,9 @@ const CreatePastePage: React.FC = () => {
                 <Checkbox
                   checked={values.burn}
                   onChange={e =>
-                    getFieldProps('burn').onChange({ target: { value: e.target.checked } } as any)
+                    getFieldProps('burn').onChange({ 
+                      target: { value: e.target.checked } 
+                    } as React.ChangeEvent<HTMLInputElement>)
                   }
                 />
               }

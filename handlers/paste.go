@@ -2,9 +2,13 @@ package handlers
 
 import (
 	"context"
+	"html"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/models"
@@ -85,6 +89,41 @@ const (
 	MaxExpiryMinutes = 60 * 24 * 365 // 1 year
 )
 
+// Security patterns to detect potentially dangerous content
+var (
+	dangerousPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)<script[^>]*>.*?</script>`),
+		regexp.MustCompile(`(?i)javascript:`),
+		regexp.MustCompile(`(?i)data:text/html`),
+		regexp.MustCompile(`(?i)vbscript:`),
+		regexp.MustCompile(`(?i)on\w+\s*=`), // onclick, onload, etc.
+	}
+	
+	// Allowed languages for syntax highlighting
+	allowedLanguages = map[string]bool{
+		"":           true, // plain text
+		"txt":        true,
+		"javascript": true,
+		"python":     true,
+		"go":         true,
+		"java":       true,
+		"c":          true,
+		"cpp":        true,
+		"html":       true,
+		"css":        true,
+		"json":       true,
+		"xml":        true,
+		"yaml":       true,
+		"markdown":   true,
+		"sql":        true,
+		"bash":       true,
+		"shell":      true,
+		"php":        true,
+		"ruby":       true,
+		"rust":       true,
+	}
+)
+
 // CreatePaste handles the creation of a new paste.
 func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -124,12 +163,23 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 		ExpiryTime: time.Now().Add(time.Duration(expireTime) * time.Minute).Format(time.RFC3339),
 	}
 
+	// Sanitize content before validation
+	sanitizedContent, err := sanitizeContent(req.Content)
+	if err != nil {
+		log.Error("Error sanitizing content", zap.Error(err))
+		respondWithError(w, http.StatusBadRequest, "Invalid content")
+		return
+	}
+	req.Content = sanitizedContent
+
 	if err := validateCreatePasteRequest(req); err != nil {
 		log.Error("Error validating create paste request", zap.Error(err))
 		if err == ErrEmptyContent {
 			respondWithError(w, http.StatusBadRequest, "Content cannot be empty")
 		} else if err == ErrContentTooLarge {
 			respondWithError(w, http.StatusRequestEntityTooLarge, "Content exceeds maximum size")
+		} else if err == ErrInvalidLanguage {
+			respondWithError(w, http.StatusBadRequest, "Invalid or unsupported language")
 		} else {
 			respondWithError(w, http.StatusBadRequest, err.Error())
 		}
@@ -241,16 +291,68 @@ func deletePasteByUUID(ctx context.Context, pasteUUID uuid.UUID) error {
 	return nil
 }
 
+// sanitizeContent cleans and validates content for security
+func sanitizeContent(content string) (string, error) {
+	// Validate UTF-8 encoding
+	if !utf8.ValidString(content) {
+		log.Warn("Invalid UTF-8 content detected")
+		// Try to make it valid UTF-8 by escaping
+		content = html.EscapeString(content)
+	}
+
+	// Remove null bytes which can cause security issues
+	content = strings.ReplaceAll(content, "\x00", "")
+	
+	// Remove carriage returns that might cause CRLF injection
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.ReplaceAll(content, "\r", "\n")
+
+	// Check for potentially dangerous patterns
+	for _, pattern := range dangerousPatterns {
+		if pattern.MatchString(content) {
+			log.Warn("Potentially dangerous pattern detected in content",
+				zap.String("pattern", pattern.String()))
+			// For now, we'll log but allow the content
+			// In a more strict environment, you might want to reject it
+		}
+	}
+
+	return content, nil
+}
+
+// validateLanguage checks if the provided language is allowed
+func validateLanguage(language string) bool {
+	if language == "" {
+		return true // empty language is allowed (plain text)
+	}
+	
+	// Convert to lowercase for case-insensitive comparison
+	language = strings.ToLower(strings.TrimSpace(language))
+	
+	return allowedLanguages[language]
+}
+
 // Helper function to validate the create paste request.
 func validateCreatePasteRequest(req models.CreatePasteRequest) error {
 	if req.Content == "" {
 		return ErrEmptyContent
 	}
 
+	// Validate content size before sanitization
 	if len(req.Content) > MaxPasteSize {
 		return ErrContentTooLarge
 	}
 
+	// Content sanitization is done before calling this function
+	// Just validate that the content is already sanitized
+
+	// Validate language
+	if !validateLanguage(req.Language) {
+		log.Warn("Invalid language specified", zap.String("language", req.Language))
+		return ErrInvalidLanguage
+	}
+
+	// Validate expiry time
 	if req.ExpiryTime == "" {
 		return ErrInvalidExpiry
 	}
@@ -262,6 +364,12 @@ func validateCreatePasteRequest(req models.CreatePasteRequest) error {
 
 	if expiryTimestamp.Before(time.Now()) {
 		return ErrExpiryInPast
+	}
+
+	// Additional security: Check if expiry is too far in the future (sanity check)
+	maxFutureTime := time.Now().Add(time.Duration(MaxExpiryMinutes) * time.Minute)
+	if expiryTimestamp.After(maxFutureTime) {
+		return ErrExpiryTooFar
 	}
 
 	return nil

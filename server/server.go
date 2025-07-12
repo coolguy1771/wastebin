@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -83,7 +84,7 @@ func (s *Server) Start() error {
 	// Initialize Chi router with routes and observability middleware
 	router := routes.AddRoutes(s.observability)
 
-	// Create HTTP server
+	// Create HTTP server with enhanced security configuration
 	s.httpServer = &http.Server{
 		Addr:    ":" + s.config.WebappPort,
 		Handler: router,
@@ -92,6 +93,21 @@ func (s *Server) Start() error {
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
+		// TLS configuration for enhanced security
+		TLSConfig: &tls.Config{
+			MinVersion:               tls.VersionTLS13,
+			PreferServerCipherSuites: true,
+			CurvePreferences: []tls.CurveID{
+				tls.X25519,
+				tls.CurveP256,
+			},
+			CipherSuites: []uint16{
+				tls.TLS_AES_256_GCM_SHA384,
+				tls.TLS_CHACHA20_POLY1305_SHA256,
+				tls.TLS_AES_128_GCM_SHA256,
+			},
+		},
 	}
 
 	// Setup graceful shutdown
@@ -131,9 +147,16 @@ func (s *Server) startWithGracefulShutdown() error {
 		close(idleConnsClosed)
 	}()
 
-	// Start the server
-	s.logger.Info("Starting HTTP server",
+	// Start the server with or without TLS
+	protocol := "HTTP"
+	if s.config.TLSEnabled {
+		protocol = "HTTPS"
+	}
+	
+	s.logger.Info("Starting server",
+		zap.String("protocol", protocol),
 		zap.String("port", s.config.WebappPort),
+		zap.Bool("tls_enabled", s.config.TLSEnabled),
 		zap.String("env", func() string {
 			if s.config.Dev {
 				return "development"
@@ -141,8 +164,15 @@ func (s *Server) startWithGracefulShutdown() error {
 			return "production"
 		}()))
 
-	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("HTTP server failed: %w", err)
+	var err error
+	if s.config.TLSEnabled {
+		err = s.httpServer.ListenAndServeTLS(s.config.TLSCertFile, s.config.TLSKeyFile)
+	} else {
+		err = s.httpServer.ListenAndServe()
+	}
+
+	if err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("%s server failed: %w", protocol, err)
 	}
 
 	// Wait for the server to shutdown gracefully

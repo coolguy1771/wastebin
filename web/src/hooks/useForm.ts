@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { SelectChangeEvent } from '@mui/material';
 
-export interface ValidationRule<T = any> {
+export interface ValidationRule<T = unknown> {
   required?: boolean;
   minLength?: number;
   maxLength?: number;
@@ -10,7 +10,7 @@ export interface ValidationRule<T = any> {
   message?: string;
 }
 
-export interface FormField<T = any> {
+export interface FormField<T = unknown> {
   value: T;
   error: string | null;
   touched: boolean;
@@ -29,20 +29,20 @@ export interface UseFormReturn<T> {
   touched: Partial<Record<keyof T, boolean>>;
   isValid: boolean;
   isSubmitting: boolean;
-  setValue: (field: keyof T, value: any) => void;
+  setValue: (field: keyof T, value: T[keyof T]) => void;
   setFieldError: (field: keyof T, error: string | null) => void;
   setFieldTouched: (field: keyof T, touched?: boolean) => void;
   reset: () => void;
   handleSubmit: (e?: React.FormEvent) => Promise<void>;
   getFieldProps: (field: keyof T) => {
-    value: any;
+    value: T[keyof T];
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
     onBlur: () => void;
     error: boolean;
     helperText: string | undefined;
   };
   getSelectProps: (field: keyof T) => {
-    value: any;
+    value: T[keyof T];
     onChange: (e: SelectChangeEvent) => void;
     onBlur: () => void;
     error: boolean;
@@ -52,7 +52,7 @@ export interface UseFormReturn<T> {
 /**
  * Enhanced form hook with validation, error handling, and Material-UI integration
  */
-export function useForm<T extends Record<string, any>>({
+export function useForm<T extends Record<string, unknown>>({
   initialValues,
   validationRules = {},
   onSubmit,
@@ -64,7 +64,7 @@ export function useForm<T extends Record<string, any>>({
 
   // Validation function
   const validateField = useCallback(
-    (field: keyof T, value: any): string | null => {
+    (field: keyof T, value: T[keyof T]): string | null => {
       const rules = validationRules[field];
       if (!rules) return null;
 
@@ -126,7 +126,7 @@ export function useForm<T extends Record<string, any>>({
 
   // Set field value with validation
   const setValue = useCallback(
-    (field: keyof T, value: any) => {
+    (field: keyof T, value: T[keyof T]) => {
       setValues(prev => ({ ...prev, [field]: value }));
 
       // Validate field if it's been touched

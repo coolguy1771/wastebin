@@ -4,6 +4,7 @@
 
 import React, { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeContextProvider } from '@contexts/ThemeContext';
 import { SecurityProvider } from '@contexts/SecurityContext';
@@ -21,7 +22,7 @@ const AllProviders: React.FC<{
   children: ReactNode;
   initialEntries?: string[];
   withErrorBoundary?: boolean;
-}> = ({ children, initialEntries: _initialEntries = ['/'], withErrorBoundary = true }) => {
+}> = ({ children, withErrorBoundary = true }) => {
   const content = withErrorBoundary ? <ErrorBoundary>{children}</ErrorBoundary> : children;
 
   return (
@@ -53,7 +54,7 @@ export const renderWithProviders = (ui: ReactElement, options: CustomRenderOptio
 };
 
 // Form testing utilities
-export const fillForm = async (user: any, fields: Record<string, string | boolean>) => {
+export const fillForm = async (user: ReturnType<typeof userEvent.setup>, fields: Record<string, string | boolean>) => {
   for (const [name, value] of Object.entries(fields)) {
     const field = document.querySelector(`[name="${name}"]`) as HTMLElement;
 
@@ -109,7 +110,7 @@ export const createMockPaste = (overrides = {}) => ({
 });
 
 // API mock helpers
-export const mockApiSuccess = (data: any) => {
+export const mockApiSuccess = (data: unknown) => {
   return Promise.resolve({
     ok: true,
     status: 200,
@@ -118,7 +119,7 @@ export const mockApiSuccess = (data: any) => {
   });
 };
 
-export const mockApiError = (_status = 500, message = 'Server error') => {
+export const mockApiError = (message = 'Server error') => {
   return Promise.reject(new Error(message));
 };
 

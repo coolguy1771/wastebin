@@ -18,10 +18,12 @@ var (
 	ErrEmptyContent       = errors.New("content cannot be empty")
 	ErrInvalidExpiry      = errors.New("invalid expiry time")
 	ErrExpiryInPast       = errors.New("expiry time cannot be in the past")
+	ErrExpiryTooFar       = errors.New("expiry time is too far in the future")
 	ErrInvalidUUID        = errors.New("invalid UUID format")
 	ErrPasteNotFound      = errors.New("paste not found")
 	ErrContentTooLarge    = errors.New("content exceeds maximum size")
 	ErrInvalidContentType = errors.New("invalid content type")
+	ErrInvalidLanguage    = errors.New("invalid or unsupported language")
 )
 
 // respondWithError sends a JSON error response

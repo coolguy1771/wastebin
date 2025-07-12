@@ -95,8 +95,14 @@ func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 		zap.Int("port", config.Conf.DBPort),
 		zap.String("name", config.Conf.DBName))
 
-	dsn := fmt.Sprintf("user=%s password=%s host=%s dbname=%s port=%d sslmode=disable",
-		config.Conf.DBUser, config.Conf.DBPassword, config.Conf.DBHost, config.Conf.DBName, config.Conf.DBPort)
+	// Determine SSL mode based on environment
+	sslMode := "prefer"
+	// if config.Conf.Dev {
+	// 	sslMode = "prefer" // More lenient for development
+	// }
+
+	dsn := fmt.Sprintf("user=%s password=%s host=%s dbname=%s port=%d sslmode=%s",
+		config.Conf.DBUser, config.Conf.DBPassword, config.Conf.DBHost, config.Conf.DBName, config.Conf.DBPort, sslMode)
 
 	// Configure GORM
 	gormConfig := &gorm.Config{

@@ -1,5 +1,5 @@
 import { useTheme, useMediaQuery } from '@mui/material';
-import { Breakpoint } from '@mui/material/styles';
+import { Breakpoint, Theme } from '@mui/material/styles';
 
 /**
  * Responsive design utilities and breakpoints
@@ -40,13 +40,7 @@ export function useResponsive() {
     isXLarge,
     isSmallMobile,
     isWideScreen,
-
-    // Utility functions
-    only: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.only(breakpoint)),
-    up: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.up(breakpoint)),
-    down: (breakpoint: Breakpoint) => useMediaQuery(theme.breakpoints.down(breakpoint)),
-    between: (start: Breakpoint, end: Breakpoint) =>
-      useMediaQuery(theme.breakpoints.between(start, end)),
+    theme, // Expose theme for external breakpoint queries
   };
 }
 
@@ -186,6 +180,14 @@ export const grid = {
     desktop: 4,
   },
 } as const;
+
+// Utility functions for breakpoint queries (use with theme from useResponsive hook)
+export const createBreakpointHelpers = (theme: Theme) => ({
+  only: (breakpoint: Breakpoint) => theme.breakpoints.only(breakpoint),
+  up: (breakpoint: Breakpoint) => theme.breakpoints.up(breakpoint),
+  down: (breakpoint: Breakpoint) => theme.breakpoints.down(breakpoint),
+  between: (start: Breakpoint, end: Breakpoint) => theme.breakpoints.between(start, end),
+});
 
 // Helper function to get responsive values
 export function getResponsiveValue<T>(
