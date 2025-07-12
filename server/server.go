@@ -132,7 +132,7 @@ func (s *Server) startWithGracefulShutdown() error {
 	}()
 
 	// Start the server
-	s.logger.Info("Starting HTTP server", 
+	s.logger.Info("Starting HTTP server",
 		zap.String("port", s.config.WebappPort),
 		zap.String("env", func() string {
 			if s.config.Dev {

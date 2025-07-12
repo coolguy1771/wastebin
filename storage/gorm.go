@@ -32,13 +32,13 @@ func ConnectWithRetry(maxRetries int, obs *observability.Provider) error {
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		log.Info("Attempting database connection", zap.Int("attempt", attempt), zap.Int("max_retries", maxRetries))
-		
+
 		if config.Conf.LocalDB {
 			conn, err = connectSQLite(obs)
 		} else {
 			conn, err = connectPostgres(obs)
 		}
-		
+
 		if err == nil {
 			// Test the connection
 			if err = testConnection(conn); err == nil {
@@ -47,12 +47,12 @@ func ConnectWithRetry(maxRetries int, obs *observability.Provider) error {
 				return nil
 			}
 		}
-		
-		log.Warn("Database connection failed", 
+
+		log.Warn("Database connection failed",
 			zap.Int("attempt", attempt),
 			zap.Int("max_retries", maxRetries),
 			zap.Error(err))
-		
+
 		if attempt < maxRetries {
 			// Exponential backoff
 			backoffDuration := time.Duration(attempt*attempt) * time.Second
@@ -60,30 +60,30 @@ func ConnectWithRetry(maxRetries int, obs *observability.Provider) error {
 			time.Sleep(backoffDuration)
 		}
 	}
-	
+
 	return fmt.Errorf("failed to connect to the database after %d attempts: %w", maxRetries, err)
 }
 
 // connectSQLite connects to a local SQLite database.
 func connectSQLite(obs *observability.Provider) (*gorm.DB, error) {
 	log.Info("Connecting to local SQLite database")
-	
+
 	// Configure GORM
 	config := &gorm.Config{
 		Logger: logger.Default,
 	}
-	
+
 	conn, err := gorm.Open(sqlite.Open("dev.db"), config)
 	if err != nil {
 		log.Error("Error connecting to SQLite database", zap.Error(err))
 		return nil, err
 	}
-	
+
 	// Apply observability instrumentation after connection is established
 	if obs != nil {
 		conn = obs.InstrumentGorm(conn, config.Logger)
 	}
-	
+
 	log.Info("Connected to local SQLite database")
 	return conn, nil
 }
@@ -135,7 +135,7 @@ func configureDBConnection(conn *gorm.DB) error {
 	if maxIdleConns <= 0 {
 		maxIdleConns = 5 // Reasonable default
 	}
-	
+
 	maxOpenConns := config.Conf.DBMaxOpenConns
 	if maxOpenConns <= 0 {
 		maxOpenConns = 25 // Reasonable default
@@ -170,16 +170,16 @@ func Migrate() error {
 func testConnection(conn *gorm.DB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	sqlDB, err := conn.DB()
 	if err != nil {
 		return fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
-	
+
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -188,25 +188,25 @@ func HealthCheck(ctx context.Context) error {
 	if DBConn == nil {
 		return fmt.Errorf("database connection is not initialized")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	
+
 	sqlDB, err := DBConn.DB()
 	if err != nil {
 		return fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
-	
+
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return fmt.Errorf("database health check failed: %w", err)
 	}
-	
+
 	// Check if we can perform a simple query
 	var count int64
 	if err := DBConn.WithContext(ctx).Model(&models.Paste{}).Count(&count).Error; err != nil {
 		return fmt.Errorf("database query test failed: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -216,21 +216,21 @@ func Close() error {
 		log.Info("Database connection is already nil, nothing to close")
 		return nil
 	}
-	
+
 	log.Info("Closing database connection...")
-	
+
 	sqlDB, err := DBConn.DB()
 	if err != nil {
 		log.Error("Failed to get DB from GORM connection", zap.Error(err))
 		return err
 	}
-	
+
 	// Set a timeout for closing the connection
 	done := make(chan error, 1)
 	go func() {
 		done <- sqlDB.Close()
 	}()
-	
+
 	select {
 	case err := <-done:
 		if err != nil {

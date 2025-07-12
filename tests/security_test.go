@@ -15,7 +15,7 @@ import (
 
 // TestSecurityHeaders verifies that required security headers are present
 func TestSecurityHeaders(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -38,7 +38,7 @@ func TestSecurityHeaders(t *testing.T) {
 
 // TestSQLInjectionProtection tests protection against SQL injection attacks
 func TestSQLInjectionProtection(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -87,7 +87,7 @@ func TestSQLInjectionProtection(t *testing.T) {
 
 // TestXSSProtection tests protection against XSS attacks
 func TestXSSProtection(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -143,7 +143,7 @@ func TestXSSProtection(t *testing.T) {
 
 // TestRateLimiting tests the rate limiting functionality
 func TestRateLimiting(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -180,7 +180,7 @@ func TestRateLimiting(t *testing.T) {
 
 // TestCSRFProtection tests CSRF protection measures
 func TestCSRFProtection(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -219,7 +219,7 @@ func TestCSRFProtection(t *testing.T) {
 
 // TestInputValidation tests comprehensive input validation
 func TestInputValidation(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -323,7 +323,7 @@ func TestInputValidation(t *testing.T) {
 
 // TestAuthenticationBypass tests that no authentication bypass is possible
 func TestAuthenticationBypass(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -356,7 +356,7 @@ func TestAuthenticationBypass(t *testing.T) {
 
 // TestDirectoryTraversal tests protection against directory traversal attacks
 func TestDirectoryTraversal(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -385,7 +385,7 @@ func TestDirectoryTraversal(t *testing.T) {
 
 // TestHTTPMethodSecurity tests that only allowed HTTP methods work
 func TestHTTPMethodSecurity(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -405,7 +405,7 @@ func TestHTTPMethodSecurity(t *testing.T) {
 
 // TestInformationDisclosure tests that no sensitive information is leaked
 func TestInformationDisclosure(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -419,7 +419,7 @@ func TestInformationDisclosure(t *testing.T) {
 
 	if resp.JSON != nil {
 		errorMsg := fmt.Sprintf("%v", resp.JSON["error"])
-		
+
 		// Should not contain sensitive paths or internal details
 		sensitiveStrings := []string{
 			"/var/", "/etc/", "/home/", "/root/",
@@ -429,7 +429,7 @@ func TestInformationDisclosure(t *testing.T) {
 		}
 
 		for _, sensitive := range sensitiveStrings {
-			assert.NotContains(t, strings.ToLower(errorMsg), sensitive, 
+			assert.NotContains(t, strings.ToLower(errorMsg), sensitive,
 				"Error message should not contain sensitive information: %s", sensitive)
 		}
 	}

@@ -35,10 +35,10 @@ func (g *GormTracer) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 
 	// Get SQL and rows affected
 	sql, rowsAffected := fc()
-	
+
 	// Determine operation type from SQL
 	operation := extractOperationType(sql)
-	
+
 	// Create span
 	ctx, span := g.provider.TracingProvider.StartSpan(ctx, "db."+operation)
 	defer span.End()
@@ -75,7 +75,7 @@ func extractOperationType(sql string) string {
 	if len(sql) > 10 {
 		sqlLower = sql[:10]
 	}
-	
+
 	// Simple operation detection
 	switch {
 	case contains(sqlLower, "SELECT"):
@@ -103,7 +103,7 @@ func contains(s, substr string) bool {
 	if len(substr) > len(s) {
 		return false
 	}
-	
+
 	for i := 0; i <= len(s)-len(substr); i++ {
 		match := true
 		for j := 0; j < len(substr); j++ {

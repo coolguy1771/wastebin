@@ -28,7 +28,7 @@ func setupTestConfig(localDB bool) {
 func TestConnectSQLite(t *testing.T) {
 	setupTestConfig(true) // Set LocalDB to true
 
-	err := Connect()
+	err := Connect(nil)
 	defer Close()
 
 	assert.NoError(t, err, "Expected no error when connecting to SQLite")
@@ -48,7 +48,7 @@ func TestConnectPostgres(t *testing.T) {
 	conn, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	DBConn = conn
 
-	err = Connect()
+	err = Connect(nil)
 	defer Close()
 
 	assert.NoError(t, err, "Expected no error when connecting to PostgreSQL (mocked with SQLite)")
@@ -75,7 +75,7 @@ func TestConfigureDBConnection(t *testing.T) {
 func TestMigrate(t *testing.T) {
 	setupTestConfig(true) // Set LocalDB to true
 
-	err := Connect()
+	err := Connect(nil)
 	assert.NoError(t, err, "Expected no error when connecting to SQLite")
 	defer Close()
 
@@ -90,7 +90,7 @@ func TestMigrate(t *testing.T) {
 func TestClose(t *testing.T) {
 	setupTestConfig(true) // Set LocalDB to true
 
-	err := Connect()
+	err := Connect(nil)
 	assert.NoError(t, err, "Expected no error when connecting to SQLite")
 
 	err = Close()

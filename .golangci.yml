@@ -1,18 +1,16 @@
 run:
   timeout: 5m
-  go: "1.23"
+  go: "1.24"
   modules-download-mode: readonly
+
+# Configuration version
+version: "2"
 
 linters-settings:
   govet:
-    check-shadowing: true
     enable-all: true
-  golint:
-    min-confidence: 0
   gocyclo:
     min-complexity: 15
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 100
   goconst:
@@ -50,63 +48,50 @@ linters-settings:
         arguments:
           - "checkPrivateReceivers"
           - "sayRepetitiveInsteadOfStutters"
+  cyclop:
+    max-complexity: 15
+  nestif:
+    min-complexity: 4
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
 
 linters:
-  disable-all: true
   enable:
-    - bodyclose
-    - deadcode
-    - depguard
-    - dogsled
-    - dupl
-    - errcheck
-    - funlen
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - golint
-    - gomnd
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - interfacer
-    - lll
-    - misspell
-    - nakedret
-    - rowserrcheck
-    - scopelint
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - varcheck
-    - whitespace
-    - revive
+    # Core linters (always recommended)
+    - errcheck      # Check for unhandled errors
+    - govet         # Standard Go vet checks
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Advanced static analysis
+    - unused        # Detect unused constants, variables, functions and types
+    
+    # Style and formatting
+    - revive        # Replacement for golint
+    - whitespace    # Detect unnecessary whitespace
+    
+    # Code quality
+    - bodyclose     # Check if HTTP response body is closed
+    - dupl          # Code duplication
+    - goconst       # Repeated strings that could be constants
+    - gocritic      # Go source code linter providing checks currently missing from other linters
+    - gocyclo       # Cyclomatic complexity
+    - gosec         # Security checks
+    - misspell      # Spelling mistakes
+    - unconvert     # Unnecessary type conversions
+    - unparam       # Unused function parameters
+    
+    # Performance
+    - prealloc      # Find slice declarations that could potentially be pre-allocated
+    
+    # Additional checks
+    - funlen        # Function length
+    - lll           # Line length
+    - nakedret      # Naked returns
+    - nestif        # Nested if statements
+    - cyclop        # Cyclomatic complexity
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gomnd
-        - funlen
-        - dupl
-        - lll
-    - path: internal/testutil/
-      linters:
-        - gomnd
-        - funlen
-        - dupl
-    - linters:
-        - lll
-      source: "^//go:generate "
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  new-from-rev: ""

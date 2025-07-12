@@ -15,7 +15,7 @@ import (
 
 // BenchmarkCreatePaste benchmarks paste creation performance
 func BenchmarkCreatePaste(b *testing.B) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -43,7 +43,7 @@ func BenchmarkCreatePaste(b *testing.B) {
 
 // BenchmarkGetPaste benchmarks paste retrieval performance
 func BenchmarkGetPaste(b *testing.B) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -66,7 +66,7 @@ func BenchmarkGetPaste(b *testing.B) {
 
 // BenchmarkGetRawPaste benchmarks raw paste retrieval performance
 func BenchmarkGetRawPaste(b *testing.B) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -89,7 +89,7 @@ func BenchmarkGetRawPaste(b *testing.B) {
 
 // BenchmarkLargePasteCreation benchmarks creation of large pastes
 func BenchmarkLargePasteCreation(b *testing.B) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(&testing.T{}, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -121,7 +121,7 @@ func BenchmarkLargePasteCreation(b *testing.B) {
 
 // TestConcurrentOperations tests concurrent read/write performance
 func TestConcurrentOperations(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -233,7 +233,7 @@ func TestLoadTesting(t *testing.T) {
 		t.Skip("Skipping load test in short mode")
 	}
 
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -348,7 +348,7 @@ func TestMemoryUsage(t *testing.T) {
 		t.Skip("Skipping memory test in short mode")
 	}
 
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -360,7 +360,7 @@ func TestMemoryUsage(t *testing.T) {
 
 	for i := 0; i < numPastes; i++ {
 		content := fmt.Sprintf("Memory test paste %d with some content to test memory usage", i)
-		
+
 		resp := server.MakeRequest(testutil.HTTPRequest{
 			Method: "POST",
 			Path:   "/api/v1/paste",
@@ -394,7 +394,7 @@ func TestMemoryUsage(t *testing.T) {
 
 // TestDatabasePerformance tests database-specific performance
 func TestDatabasePerformance(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,
@@ -437,7 +437,7 @@ type result struct {
 
 // TestResponseTimeDistribution tests the distribution of response times
 func TestResponseTimeDistribution(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: true,
 		EnableLogging: false,

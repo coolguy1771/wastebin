@@ -19,27 +19,27 @@ import (
 
 func initChiRouter(obs *observability.Provider) *chi.Mux {
 	r := chi.NewRouter()
-	
+
 	// Apply core middlewares
 	r.Use(middleware.RequestID)
-	
+
 	// Add observability middleware first
 	if obs != nil {
 		r.Use(obs.HTTPMiddleware())
 	}
-	
+
 	r.Use(handlers.ZapLogger(log.Default())) // Log the start and end of each request with the elapsed processing time
 	r.Use(middleware.Recoverer)              // Recover from panics without crashing server
 	r.Use(middleware.Heartbeat("/healthz"))
-	
+
 	// Add security headers
 	r.Use(middleware.SetHeader("X-Content-Type-Options", "nosniff"))
 	r.Use(middleware.SetHeader("X-Frame-Options", "DENY"))
 	r.Use(middleware.SetHeader("X-XSS-Protection", "1; mode=block"))
-	
+
 	// Add rate limiting
 	r.Use(httprate.LimitByIP(100, 1*time.Minute)) // 100 requests per minute per IP
-	
+
 	// Add API versioning middleware
 	r.Use(APIVersionMiddleware)
 
@@ -59,7 +59,6 @@ func AddRoutes(obs *observability.Provider) *chi.Mux {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-
 
 	// Set up API routes
 	setupAPIRoutes(r, obs)
@@ -84,7 +83,7 @@ func setupAPIRoutes(r *chi.Mux, obs *observability.Provider) {
 	})
 
 	// Raw paste endpoint is handled in setupStaticRoutes to avoid conflicts
-	
+
 	// Health check endpoint for monitoring
 	if obs != nil {
 		r.Get("/health", obs.HealthCheckMiddleware())
@@ -93,7 +92,7 @@ func setupAPIRoutes(r *chi.Mux, obs *observability.Provider) {
 			jsonResponse(w, map[string]string{"status": "healthy", "service": "wastebin"})
 		})
 	}
-	
+
 	// Database health check endpoint
 	r.Get("/health/db", handlers.DatabaseHealthCheck)
 }
@@ -168,12 +167,12 @@ func APIVersionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Default to v1 if no version specified
 		version := "v1"
-		
+
 		// Check for version in header
 		if headerVersion := r.Header.Get("X-API-Version"); headerVersion != "" {
 			version = headerVersion
 		}
-		
+
 		// Check for version in Accept header (content negotiation)
 		if accept := r.Header.Get("Accept"); accept != "" {
 			if strings.Contains(accept, "application/vnd.wastebin.v2+json") {
@@ -182,10 +181,10 @@ func APIVersionMiddleware(next http.Handler) http.Handler {
 				version = "v1"
 			}
 		}
-		
+
 		// Add version to response headers
 		w.Header().Set("X-API-Version", version)
-		
+
 		// Add version to context for handlers to use
 		ctx := context.WithValue(r.Context(), "api-version", version)
 		next.ServeHTTP(w, r.WithContext(ctx))

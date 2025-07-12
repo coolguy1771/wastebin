@@ -1,6 +1,141 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:best-practices",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergeDigests",
+    ":automergeBranch",
+    "group:monorepos",
+    "group:recommended",
+    "workarounds:all"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 6am on monday"],
+  "updateNotScheduled": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Group Go dependencies",
+      "matchManagers": ["gomod"],
+      "groupName": "go-dependencies",
+      "schedule": ["before 6am on monday"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "description": "Group Node.js dependencies",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies", "devDependencies"],
+      "groupName": "node-dependencies",
+      "schedule": ["before 6am on monday"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "description": "Automerge patch updates for Go stdlib and well-known packages",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch"],
+      "matchPackagePatterns": [
+        "^go$",
+        "^golang.org/x/",
+        "^github.com/stretchr/testify$",
+        "^go.uber.org/zap$",
+        "^gorm.io/"
+      ],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "description": "Automerge patch updates for React ecosystem",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["patch"],
+      "matchPackagePatterns": [
+        "^@types/",
+        "^react",
+        "^@mui/",
+        "typescript",
+        "vite"
+      ],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "description": "Pin Docker digests",
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "pinDigests": true,
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Security updates - high priority",
+      "matchPackagePatterns": ["*"],
+      "matchDepTypes": ["dependencies"],
+      "vulnerabilityAlerts": {
+        "enabled": true
+      },
+      "prPriority": 10,
+      "schedule": ["at any time"]
+    },
+    {
+      "description": "Major updates require manual review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "prPriority": 5,
+      "schedule": ["before 6am on monday"],
+      "commitMessagePrefix": "feat(deps)!:",
+      "addLabels": ["breaking-change", "major-update"]
+    },
+    {
+      "description": "Minor updates",
+      "matchUpdateTypes": ["minor"],
+      "automerge": false,
+      "prPriority": 3,
+      "commitMessagePrefix": "feat(deps):",
+      "addLabels": ["enhancement", "minor-update"]
+    },
+    {
+      "description": "Patch updates",
+      "matchUpdateTypes": ["patch"],
+      "prPriority": 1,
+      "commitMessagePrefix": "fix(deps):",
+      "addLabels": ["bug-fix", "patch-update"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "osvVulnerabilityAlerts": true,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Renovate Dashboard 🤖",
+  "dependencyDashboardHeader": "This dashboard shows all pending updates managed by Renovate.",
+  "dependencyDashboardFooter": "Configure Renovate in `renovate.json`",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to {{newVersion}}",
+  "commitMessageSuffix": "",
+  "prBodyTemplate": "{{{header}}}{{{table}}}{{{notes}}}{{{changelogs}}}{{{configDescription}}}{{{controls}}}{{{footer}}}",
+  "prTitle": "{{commitMessageAction}} {{commitMessageTopic}} {{commitMessageExtra}}",
+  "rebaseWhen": "conflicted",
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/vendor/**",
+    "**/.git/**",
+    "**/dist/**",
+    "**/build/**"
+  ],
+  "enabledManagers": [
+    "gomod",
+    "npm",
+    "dockerfile",
+    "github-actions",
+    "docker-compose"
   ]
 }

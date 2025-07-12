@@ -9,8 +9,6 @@ archives:
       - "README.md"
       - "LICENSE"
       - "CHANGELOG.md"
-    replacements:
-      darwin: "macOS"
 
 builds:
   - id: "wastebin"

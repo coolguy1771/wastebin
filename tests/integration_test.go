@@ -18,7 +18,7 @@ import (
 
 // TestFullPasteWorkflow tests the complete paste lifecycle
 func TestFullPasteWorkflow(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -83,7 +83,7 @@ func TestFullPasteWorkflow(t *testing.T) {
 
 // TestBurnAfterReadWorkflow tests the burn-after-read functionality
 func TestBurnAfterReadWorkflow(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -122,7 +122,7 @@ func TestBurnAfterReadWorkflow(t *testing.T) {
 
 // TestHealthEndpoints tests all health check endpoints
 func TestHealthEndpoints(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -170,7 +170,7 @@ func TestHealthEndpoints(t *testing.T) {
 
 // TestAPIVersioning tests API versioning functionality
 func TestAPIVersioning(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -216,7 +216,7 @@ func TestAPIVersioning(t *testing.T) {
 
 // TestSecurityHeaders tests that security headers are properly set
 func TestIntegrationSecurityHeaders(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -239,7 +239,7 @@ func TestIntegrationSecurityHeaders(t *testing.T) {
 
 // TestRequestTracing tests that request IDs are properly generated and returned
 func TestRequestTracing(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -254,7 +254,7 @@ func TestRequestTracing(t *testing.T) {
 
 // TestConcurrentOperations tests concurrent access to the API
 func TestIntegrationConcurrentOperations(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -317,7 +317,7 @@ func TestIntegrationConcurrentOperations(t *testing.T) {
 
 // TestErrorHandling tests various error scenarios
 func TestErrorHandling(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -400,7 +400,7 @@ func TestErrorHandling(t *testing.T) {
 
 // TestRateLimiting tests rate limiting functionality
 func TestIntegrationRateLimiting(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -428,7 +428,7 @@ func TestIntegrationRateLimiting(t *testing.T) {
 
 // TestDataPersistence tests that data persists across operations
 func TestDataPersistence(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: false, // Use file-based DB for persistence test
 		EnableLogging: false,
@@ -471,7 +471,7 @@ func TestDataPersistence(t *testing.T) {
 
 // TestContentTypes tests different content types and languages
 func TestContentTypes(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -530,7 +530,7 @@ func TestContentTypes(t *testing.T) {
 
 // TestLargeContent tests handling of large content (within limits)
 func TestLargeContent(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -563,7 +563,7 @@ func TestLargeContent(t *testing.T) {
 
 // TestExpiryTimeValidation tests expiry time validation
 func TestExpiryTimeValidation(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -599,7 +599,7 @@ func TestExpiryTimeValidation(t *testing.T) {
 
 // TestUnicodeContent tests handling of Unicode content
 func TestUnicodeContent(t *testing.T) {
-	router := routes.AddRoutes()
+	router := routes.AddRoutes(nil)
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
