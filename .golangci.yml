@@ -31,9 +31,6 @@ linters:
     lll:
       line-length: 140
 
-    goimports:
-      local-prefixes: github.com/coolguy1771/wastebin
-
     gocritic:
       enabled-tags:
         - diagnostic
