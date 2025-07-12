@@ -1,9 +1,16 @@
 {
-  "useTabs": false,
-  "singleQuote": true,
-  "semi": false,
+  "semi": true,
   "trailingComma": "es5",
+  "singleQuote": true,
   "printWidth": 100,
-  "pluginSearchDirs": ["."],
-  "overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
+  "tabWidth": 2,
+  "useTabs": false,
+  "quoteProps": "as-needed",
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "arrowParens": "avoid",
+  "endOfLine": "lf",
+  "embeddedLanguageFormatting": "auto",
+  "proseWrap": "preserve",
+  "htmlWhitespaceSensitivity": "css"
 }

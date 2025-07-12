@@ -1,0 +1,149 @@
+version: '3.8'
+
+services:
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.60.0
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "14268:14268"   # Jaeger HTTP collector
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=info
+    command:
+      - --log-level=info
+      - --admin.http.host-port=:14269
+      - --collector.otlp.grpc.host-port=:4317
+      - --collector.otlp.http.host-port=:4318
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:14269/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.58.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports:
+      - "3001:3000"  # Changed port to avoid conflict with wastebin
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # OpenTelemetry Collector - Centralized Observability Data Processing
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    ports:
+      - "8888:8888"     # Prometheus metrics exposed by the collector
+      - "8889:8889"     # Prometheus exporter metrics
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+      - "9464:9464"     # Prometheus receiver
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otelcol-contrib/otel-collector.yml:ro
+    command: ["--config=/etc/otelcol-contrib/otel-collector.yml"]
+    depends_on:
+      - jaeger
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13133/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL for Wastebin (optional - for development)
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: wastebin
+      POSTGRES_USER: wastebin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wastebin"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Wastebin Application
+  wastebin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - WASTEBIN_DB_HOST=postgres
+      - WASTEBIN_DB_PORT=5432
+      - WASTEBIN_DB_USER=wastebin
+      - WASTEBIN_DB_PASSWORD=password
+      - WASTEBIN_DB_NAME=wastebin
+      - WASTEBIN_LOCAL_DB=false
+      - WASTEBIN_TRACING_ENABLED=true
+      - WASTEBIN_METRICS_ENABLED=true
+      - WASTEBIN_SERVICE_NAME=wastebin
+      - WASTEBIN_SERVICE_VERSION=1.0.0
+      - WASTEBIN_ENVIRONMENT=development
+      - WASTEBIN_OTLP_TRACE_ENDPOINT=http://otel-collector:4318/v1/traces
+      - WASTEBIN_OTLP_METRICS_ENDPOINT=http://otel-collector:4318/v1/metrics
+      - WASTEBIN_METRICS_INTERVAL=30
+      - WASTEBIN_LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/wastebin", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  postgres_data:
+
+networks:
+  default:
+    name: wastebin-observability

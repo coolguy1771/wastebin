@@ -110,6 +110,11 @@ func (l *Logger) Sync() error {
 	return l.l.Sync()
 }
 
+// ZapLogger returns the underlying zap.Logger
+func (l *Logger) ZapLogger() *zap.Logger {
+	return l.l
+}
+
 func Sync() error {
 	if std != nil {
 		return std.Sync()

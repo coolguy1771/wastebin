@@ -9,4 +9,4 @@
 */.prettierrc
 */playwright.config.js
 */README.md
-*/build
+*/dist

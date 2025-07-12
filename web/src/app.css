@@ -1,26 +1,87 @@
-@media (prefers-color-scheme: dark) {
-  body,
-  textarea,
-  select,
-  select > option:hover {
-    background-color: #0f1419;
-    color: #e6e1cf;
-  }
+/* Root container styling */
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  box-sizing: border-box; /* Ensure padding is included in width */
+}
 
-  select {
-    color: #e6e1cf;
+/* Logo styling */
+.logo {
+  height: 6rem;
+  padding: 1.5rem;
+  transition: filter 300ms ease, transform 300ms ease;
+  will-change: filter, transform; /* Improved browser optimization */
+  display: inline-block;
+}
+
+/* Hover effects for logo */
+.logo:hover {
+  filter: drop-shadow(0 0 2rem #646cffaa);
+  transform: scale(1.05); /* Slightly scales the logo for a smooth hover effect */
+}
+
+/* React-specific hover effect */
+.logo.react:hover {
+  filter: drop-shadow(0 0 2rem #61dafbaa);
+  transform: scale(1.05); /* Slightly scales the logo for a smooth hover effect */
+}
+
+/* Keyframe animation for spinning effect */
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
-@media (prefers-color-scheme: light) {
-  body,
-  textarea,
-  select,
-  select > option:hover {
-    background-color: #fafafa;
+/* Animation for users who prefer animations */
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* Card styling */
+.card {
+  padding: 2rem;
+  background-color: #fff; /* Improved contrast */
+  border: 1px solid #e0e0e0;
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  margin-bottom: 2rem; /* Space between cards */
+  max-width: 600px; /* Limit card width */
+  margin: 2rem auto; /* Center the card */
+  text-align: left; /* Align text to the left */
+}
+
+/* Styling for documentation links */
+.read-the-docs {
+  color: #888;
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.read-the-docs:hover {
+  color: #646cff; /* Hover color */
+}
+
+/* Responsive styling */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem; /* Reduced padding on smaller screens */
   }
 
-  select {
-    color: #0f1419;
+  .logo {
+    height: 4rem; /* Smaller logo on mobile */
+    padding: 1rem;
+  }
+
+  .card {
+    padding: 1.5rem; /* Reduced padding for smaller screens */
+    max-width: 90%; /* Allow more space for mobile */
   }
 }

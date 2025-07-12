@@ -1,0 +1,165 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Wastebin - Application Overview",
+    "tags": ["wastebin", "overview"],
+    "timezone": "browser",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{path}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "HTTP Response Times",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "yAxes": [
+          {
+            "label": "Seconds"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Active HTTP Requests",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "http_active_requests",
+            "legendFormat": "Active requests"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "System Uptime",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "system_uptime_seconds",
+            "legendFormat": "Uptime"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 8
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Database Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "db_connections_active",
+            "legendFormat": "Active connections"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Database Query Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile {{operation}}"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(db_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile {{operation}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "yAxes": [
+          {
+            "label": "Seconds"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Paste Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(paste_created_total[5m])",
+            "legendFormat": "Created/sec"
+          },
+          {
+            "expr": "rate(paste_viewed_total[5m])",
+            "legendFormat": "Viewed/sec"
+          },
+          {
+            "expr": "rate(paste_deleted_total[5m])",
+            "legendFormat": "Deleted/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        }
+      }
+    ]
+  }
+}
