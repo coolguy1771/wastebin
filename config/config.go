@@ -99,19 +99,21 @@ func Load() *Config {
 	}), nil)
 
 	// Unmarshal the configuration into the Config struct
-	if err := k.Unmarshal("", &Conf); err != nil {
+	err := k.Unmarshal("", &Conf)
+	if err != nil {
 		log.Fatal("Error loading config", zap.Error(err))
 	}
 
 	// Validate the configuration
-	if err := Conf.Validate(); err != nil {
+	err = Conf.Validate()
+	if err != nil {
 		log.Fatal("Configuration validation failed", zap.Error(err))
 	}
 
 	return &Conf
 }
 
-// Validate validates the configuration settings
+// Validate validates the configuration settings.
 func (c *Config) Validate() error {
 	var errs []string
 
@@ -129,15 +131,19 @@ func (c *Config) Validate() error {
 		if c.DBHost == "" {
 			errs = append(errs, "database host is required when not using local DB")
 		}
+
 		if c.DBUser == "" {
 			errs = append(errs, "database user is required when not using local DB")
 		}
+
 		if c.DBPassword == "" {
 			errs = append(errs, "database password is required when not using local DB")
 		}
+
 		if c.DBName == "" {
 			errs = append(errs, "database name is required when not using local DB")
 		}
+
 		if c.DBPort <= 0 || c.DBPort > 65535 {
 			errs = append(errs, "database port must be between 1 and 65535")
 		}
@@ -147,9 +153,11 @@ func (c *Config) Validate() error {
 	if c.DBMaxIdleConns < 0 {
 		errs = append(errs, "database max idle connections cannot be negative")
 	}
+
 	if c.DBMaxOpenConns < 0 {
 		errs = append(errs, "database max open connections cannot be negative")
 	}
+
 	if c.DBMaxIdleConns > c.DBMaxOpenConns && c.DBMaxOpenConns > 0 {
 		errs = append(errs, "database max idle connections cannot exceed max open connections")
 	}
@@ -157,12 +165,15 @@ func (c *Config) Validate() error {
 	// Validate log level
 	validLogLevels := []string{"DEBUG", "INFO", "WARN", "ERROR", "FATAL"}
 	validLevel := false
+
 	for _, level := range validLogLevels {
-		if strings.ToUpper(c.LogLevel) == level {
+		if strings.EqualFold(c.LogLevel, level) {
 			validLevel = true
+
 			break
 		}
 	}
+
 	if !validLevel {
 		errs = append(errs, fmt.Sprintf("log level must be one of: %v", validLogLevels))
 	}
@@ -172,6 +183,7 @@ func (c *Config) Validate() error {
 		if c.TLSCertFile == "" {
 			errs = append(errs, "TLS certificate file is required when TLS is enabled")
 		}
+
 		if c.TLSKeyFile == "" {
 			errs = append(errs, "TLS key file is required when TLS is enabled")
 		}
@@ -182,6 +194,7 @@ func (c *Config) Validate() error {
 		if c.AuthUsername == "" {
 			errs = append(errs, "auth username is required when authentication is enabled")
 		}
+
 		if c.AuthPassword == "" {
 			errs = append(errs, "auth password is required when authentication is enabled")
 		}
@@ -191,6 +204,7 @@ func (c *Config) Validate() error {
 	if c.MaxRequestSize < 1024*1024 { // Minimum 1MB
 		errs = append(errs, "max request size must be at least 1MB")
 	}
+
 	if c.MaxRequestSize > 100*1024*1024 { // Maximum 100MB
 		errs = append(errs, "max request size cannot exceed 100MB")
 	}
@@ -202,7 +216,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// GetObservabilityConfig returns observability configuration values
+// GetObservabilityConfig returns observability configuration values.
 func (c *Config) GetObservabilityConfig() (tracingEnabled, metricsEnabled bool, serviceName, version, environment, traceEndpoint, metricsEndpoint string, interval time.Duration) {
 	return c.TracingEnabled,
 		c.MetricsEnabled,

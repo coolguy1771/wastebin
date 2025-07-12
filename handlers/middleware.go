@@ -24,16 +24,18 @@ import (
 func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Skip CSRF protection for GET, HEAD, OPTIONS requests
-		if r.Method == "GET" || r.Method == "HEAD" || r.Method == "OPTIONS" {
+		if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
 			next.ServeHTTP(w, r)
+
 			return
 		}
 
 		// Skip CSRF protection for API endpoints only if using API key authentication
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			// Check if request uses API key authentication
-			if r.Header.Get("X-API-Key") != "" || r.Header.Get("Authorization") != "" {
+			if r.Header.Get("X-Api-Key") != "" || r.Header.Get("Authorization") != "" {
 				next.ServeHTTP(w, r)
+
 				return
 			}
 			// For cookie-based API auth, continue with CSRF validation
@@ -42,7 +44,7 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 		// Generate and validate CSRF token for web forms using double-submit cookie pattern
 		if config.Conf.CSRFKey != "" {
 			// Get token from header or form
-			token := r.Header.Get("X-CSRF-Token")
+			token := r.Header.Get("X-Csrf-Token")
 			if token == "" {
 				token = r.FormValue("csrf_token")
 			}
@@ -52,6 +54,7 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 			if err != nil {
 				log.Error("Failed to get or create session ID for CSRF validation", zap.Error(err))
 				respondWithError(w, http.StatusInternalServerError, "Session management failure")
+
 				return
 			}
 
@@ -62,6 +65,7 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 					zap.String("path", r.URL.Path),
 					zap.String("session_id", sessionID))
 				respondWithError(w, http.StatusForbidden, "CSRF validation failed")
+
 				return
 			}
 		}
@@ -75,7 +79,6 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 			// Wrap the request body with a limited reader
 			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 			next.ServeHTTP(w, r)
@@ -119,6 +122,7 @@ func BasicAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !config.Conf.RequireAuth {
 			next.ServeHTTP(w, r)
+
 			return
 		}
 
@@ -126,6 +130,7 @@ func BasicAuthMiddleware(next http.Handler) http.Handler {
 		if !ok {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Wastebin"`)
 			respondWithError(w, http.StatusUnauthorized, "Authentication required")
+
 			return
 		}
 
@@ -140,6 +145,7 @@ func BasicAuthMiddleware(next http.Handler) http.Handler {
 				zap.String("user_agent", r.UserAgent()))
 			w.Header().Set("WWW-Authenticate", `Basic realm="Wastebin"`)
 			respondWithError(w, http.StatusUnauthorized, "Invalid credentials")
+
 			return
 		}
 
@@ -187,6 +193,7 @@ func SecurityAuditMiddleware(next http.Handler) http.Handler {
 
 type responseWriter struct {
 	http.ResponseWriter
+
 	statusCode int
 }
 
@@ -204,6 +211,7 @@ func getRealIP(r *http.Request) string {
 		if idx := strings.Index(xff, ","); idx != -1 {
 			return strings.TrimSpace(xff[:idx])
 		}
+
 		return strings.TrimSpace(xff)
 	}
 
@@ -236,6 +244,7 @@ func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) (string, error
 	sessionID, err := generateSecureRandomString(32)
 	if err != nil {
 		log.Error("Failed to generate secure session ID", zap.Error(err))
+
 		return "", fmt.Errorf("failed to generate session ID: %w", err)
 	}
 
@@ -261,6 +270,7 @@ func generateSecureRandomString(length int) (string, error) {
 		// Fail securely - do not use predictable fallbacks
 		return "", fmt.Errorf("failed to generate secure random string: %w", err)
 	}
+
 	return hex.EncodeToString(bytes), nil
 }
 
@@ -276,6 +286,7 @@ func generateCSRFToken(sessionID, secretKey string) string {
 
 	// Format: sessionID:timestamp:signature
 	token := fmt.Sprintf("%s:%d:%s", sessionID, timestamp, signature)
+
 	return base64.StdEncoding.EncodeToString([]byte(token))
 }
 
@@ -290,13 +301,16 @@ func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
 	tokenBytes, err := base64.StdEncoding.DecodeString(tokenStr)
 	if err != nil {
 		log.Warn("Invalid base64 CSRF token", zap.Error(err))
+
 		return false
 	}
 
 	token := string(tokenBytes)
+
 	parts := strings.Split(token, ":")
 	if len(parts) != 3 {
 		log.Warn("Invalid CSRF token format")
+
 		return false
 	}
 
@@ -307,6 +321,7 @@ func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
 	// Verify session ID matches
 	if subtle.ConstantTimeCompare([]byte(tokenSessionID), []byte(sessionID)) != 1 {
 		log.Warn("CSRF token session ID mismatch")
+
 		return false
 	}
 
@@ -314,6 +329,7 @@ func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
 	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
 	if err != nil {
 		log.Warn("Invalid CSRF token timestamp", zap.Error(err))
+
 		return false
 	}
 
@@ -321,6 +337,7 @@ func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
 	tokenTime := time.Unix(timestamp, 0)
 	if time.Since(tokenTime) > csrfTokenTTL {
 		log.Warn("CSRF token expired", zap.Time("token_time", tokenTime))
+
 		return false
 	}
 
@@ -344,6 +361,7 @@ func GetCSRFToken(w http.ResponseWriter, r *http.Request) string {
 	sessionID, err := getOrCreateSessionID(w, r)
 	if err != nil {
 		log.Error("Failed to get or create session ID for CSRF token generation", zap.Error(err))
+
 		return "" // Fail securely by returning empty token
 	}
 

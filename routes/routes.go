@@ -128,13 +128,16 @@ func serveSPA(w http.ResponseWriter, r *http.Request) {
 	if !config.Conf.Dev {
 		indexFilePath = "/web/index.html"
 	}
+
 	http.ServeFile(w, r, indexFilePath)
 }
 
 // jsonResponse sends a JSON response with the given data.
 func jsonResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+	err := json.NewEncoder(w).Encode(data)
+
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -145,6 +148,7 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 		r.Get(path, http.RedirectHandler(path+"/", http.StatusMovedPermanently).ServeHTTP)
 		path += "/"
 	}
+
 	fs := http.StripPrefix(path, http.FileServer(root))
 	r.Get(path+"*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
@@ -161,6 +165,7 @@ func getAllowedOrigins() []string {
 		for i, origin := range origins {
 			origins[i] = strings.TrimSpace(origin)
 		}
+
 		return origins
 	}
 
@@ -181,7 +186,7 @@ func getAllowedOrigins() []string {
 	return []string{}
 }
 
-// APIVersionMiddleware handles API versioning
+// APIVersionMiddleware handles API versioning.
 func APIVersionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Default to v1 if no version specified

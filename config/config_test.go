@@ -27,8 +27,8 @@ func TestLoadDefaultConfig(t *testing.T) {
 	assert.Equal(t, "wastebin", config.DBUser)
 	assert.Equal(t, "wastebin", config.DBName)
 	assert.Equal(t, "INFO", config.LogLevel)
-	assert.Equal(t, true, config.LocalDB)
-	assert.Equal(t, false, config.Dev)
+	assert.True(t, config.LocalDB)
+	assert.False(t, config.Dev)
 }
 
 func TestLoadEnvironmentVariables(t *testing.T) {
@@ -67,8 +67,8 @@ func TestLoadEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, "testdb", config.DBName)
 	assert.Equal(t, "testpass", config.DBPassword)
 	assert.Equal(t, "DEBUG", config.LogLevel)
-	assert.Equal(t, false, config.LocalDB)
-	assert.Equal(t, true, config.Dev)
+	assert.False(t, config.LocalDB)
+	assert.True(t, config.Dev)
 }
 
 func TestConfigValidation(t *testing.T) {
@@ -260,6 +260,7 @@ func TestConfigValidation(t *testing.T) {
 
 			if tt.expectError {
 				require.Error(t, err)
+
 				if tt.errorContains != "" {
 					assert.Contains(t, err.Error(), tt.errorContains)
 				}
@@ -301,7 +302,7 @@ func TestLogLevelCaseInsensitive(t *testing.T) {
 	}
 }
 
-// Helper function to clear all WASTEBIN_ environment variables
+// Helper function to clear all WASTEBIN_ environment variables.
 func clearWastebinEnvVars() {
 	envVars := []string{
 		"WASTEBIN_WEBAPP_PORT",
@@ -328,7 +329,8 @@ func BenchmarkLoadConfig(b *testing.B) {
 	defer os.Unsetenv("WASTEBIN_LOCAL_DB")
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		Load()
 	}
 }
@@ -343,7 +345,8 @@ func BenchmarkValidateConfig(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		config.Validate()
 	}
 }

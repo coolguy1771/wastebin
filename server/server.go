@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,7 +20,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Server represents the application server with its dependencies
+// Server represents the application server with its dependencies.
 type Server struct {
 	config        *config.Config
 	db            *gorm.DB
@@ -28,7 +29,7 @@ type Server struct {
 	observability *observability.Provider
 }
 
-// New creates a new server instance with dependency injection
+// New creates a new server instance with dependency injection.
 func New() (*Server, error) {
 	// Load configuration
 	cfg := config.Load()
@@ -79,7 +80,7 @@ func New() (*Server, error) {
 	return server, nil
 }
 
-// Start starts the HTTP server and handles graceful shutdown
+// Start starts the HTTP server and handles graceful shutdown.
 func (s *Server) Start() error {
 	// Initialize Chi router with routes and observability middleware
 	router := routes.AddRoutes(s.observability)
@@ -114,10 +115,11 @@ func (s *Server) Start() error {
 	return s.startWithGracefulShutdown()
 }
 
-// startWithGracefulShutdown starts the server and handles graceful shutdown
+// startWithGracefulShutdown starts the server and handles graceful shutdown.
 func (s *Server) startWithGracefulShutdown() error {
 	// Setup channel for OS signals
 	idleConnsClosed := make(chan struct{})
+
 	go func() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -130,17 +132,20 @@ func (s *Server) startWithGracefulShutdown() error {
 		defer cancel()
 
 		// Shutdown HTTP server
-		if err := s.httpServer.Shutdown(ctx); err != nil {
+		err := s.httpServer.Shutdown(ctx)
+		if err != nil {
 			s.logger.Error("Error shutting down HTTP server", zap.Error(err))
 		}
 
 		// Close database connections
-		if err := storage.Close(); err != nil {
+		err = storage.Close()
+		if err != nil {
 			s.logger.Error("Error closing database connections", zap.Error(err))
 		}
 
 		// Shutdown observability
-		if err := s.observability.Shutdown(ctx); err != nil {
+		err = s.observability.Shutdown(ctx)
+		if err != nil {
 			s.logger.Error("Error shutting down observability", zap.Error(err))
 		}
 
@@ -161,6 +166,7 @@ func (s *Server) startWithGracefulShutdown() error {
 			if s.config.Dev {
 				return "development"
 			}
+
 			return "production"
 		}()))
 
@@ -171,17 +177,18 @@ func (s *Server) startWithGracefulShutdown() error {
 		err = s.httpServer.ListenAndServe()
 	}
 
-	if err != nil && err != http.ErrServerClosed {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("%s server failed: %w", protocol, err)
 	}
 
 	// Wait for the server to shutdown gracefully
 	<-idleConnsClosed
 	s.logger.Info("Server shutdown completed")
+
 	return nil
 }
 
-// Stop gracefully stops the server
+// Stop gracefully stops the server.
 func (s *Server) Stop() error {
 	if s.httpServer == nil {
 		return nil
@@ -190,17 +197,19 @@ func (s *Server) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := s.httpServer.Shutdown(ctx); err != nil {
+	err := s.httpServer.Shutdown(ctx)
+	if err != nil {
 		return fmt.Errorf("failed to shutdown HTTP server: %w", err)
 	}
 
 	return storage.Close()
 }
 
-// HealthCheck performs a comprehensive health check
+// HealthCheck performs a comprehensive health check.
 func (s *Server) HealthCheck(ctx context.Context) error {
 	// Check database health
-	if err := storage.HealthCheck(ctx); err != nil {
+	err := storage.HealthCheck(ctx)
+	if err != nil {
 		return fmt.Errorf("database health check failed: %w", err)
 	}
 
@@ -209,17 +218,17 @@ func (s *Server) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// GetConfig returns the server configuration
+// GetConfig returns the server configuration.
 func (s *Server) GetConfig() *config.Config {
 	return s.config
 }
 
-// GetDB returns the database connection
+// GetDB returns the database connection.
 func (s *Server) GetDB() *gorm.DB {
 	return s.db
 }
 
-// GetLogger returns the logger instance
+// GetLogger returns the logger instance.
 func (s *Server) GetLogger() *log.Logger {
 	return s.logger
 }

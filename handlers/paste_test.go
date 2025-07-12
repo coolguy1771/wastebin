@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// createTestRouter creates a minimal router for testing handlers
+// createTestRouter creates a minimal router for testing handlers.
 func createTestRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -27,11 +27,13 @@ func createTestRouter() *chi.Mux {
 	r.Route("/paste/{uuid}", func(r chi.Router) {
 		r.Get("/raw", GetRawPaste)
 	})
+
 	return r
 }
 
 func TestCreatePaste(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -155,6 +157,7 @@ func TestCreatePaste(t *testing.T) {
 
 func TestGetPaste(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -234,6 +237,7 @@ func TestGetPaste(t *testing.T) {
 
 func TestGetRawPaste(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -301,6 +305,7 @@ func TestGetRawPaste(t *testing.T) {
 
 func TestDeletePaste(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -371,6 +376,7 @@ func TestDeletePaste(t *testing.T) {
 
 func TestBurnAfterRead(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -402,6 +408,7 @@ func TestBurnAfterRead(t *testing.T) {
 
 func TestPasteExpiry(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -425,6 +432,7 @@ func TestPasteExpiry(t *testing.T) {
 
 func TestDatabaseHealthCheck(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -442,6 +450,7 @@ func TestDatabaseHealthCheck(t *testing.T) {
 
 func TestAPIVersioning(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -501,6 +510,7 @@ func TestAPIVersioning(t *testing.T) {
 
 func TestContentSizeLimit(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -525,14 +535,16 @@ func TestRateLimiting(t *testing.T) {
 
 func TestConcurrentPasteCreation(t *testing.T) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
 	const numGoroutines = 10
+
 	results := make(chan *testutil.HTTPResponse, numGoroutines)
 
 	// Create multiple pastes concurrently
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(index int) {
 			resp := server.MakeRequest(testutil.HTTPRequest{
 				Method: "POST",
@@ -550,7 +562,8 @@ func TestConcurrentPasteCreation(t *testing.T) {
 
 	// Collect results
 	var successful int
-	for i := 0; i < numGoroutines; i++ {
+
+	for range numGoroutines {
 		resp := <-results
 		if resp.StatusCode == http.StatusCreated {
 			successful++
@@ -565,7 +578,7 @@ func TestConcurrentPasteCreation(t *testing.T) {
 	assert.Equal(t, int64(numGoroutines), count)
 }
 
-// Helper function tests
+// Helper function tests.
 func TestValidateCreatePasteRequest(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -630,6 +643,7 @@ func TestValidateCreatePasteRequest(t *testing.T) {
 
 			if tt.expectError {
 				assert.Error(t, err)
+
 				if tt.errorType != nil {
 					assert.Equal(t, tt.errorType, err)
 				}
@@ -653,14 +667,16 @@ func TestParseExpiryTime(t *testing.T) {
 	assert.True(t, parsed.IsZero())
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkCreatePaste(b *testing.B) {
 	router := createTestRouter()
+
 	server := testutil.NewTestServer(&testing.T{}, router, nil)
 	defer server.Close()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		server.MakeRequest(testutil.HTTPRequest{
 			Method: "POST",
 			Path:   "/api/v1/paste",

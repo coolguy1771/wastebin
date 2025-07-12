@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -24,14 +25,16 @@ func GetRawPaste(w http.ResponseWriter, r *http.Request) {
 
 	paste, err := getPasteByUUID(ctx, pasteUUID)
 	if err != nil {
-		if err == ErrPasteNotFound {
+		switch err {
+		case ErrPasteNotFound:
 			respondWithError(w, http.StatusNotFound, "Paste not found")
-		} else if err == ErrInvalidUUID {
+		case ErrInvalidUUID:
 			respondWithError(w, http.StatusBadRequest, "Invalid UUID format")
-		} else {
+		default:
 			log.Error("Error retrieving paste", zap.Error(err))
 			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve paste")
 		}
+
 		return
 	}
 
@@ -39,9 +42,11 @@ func GetRawPaste(w http.ResponseWriter, r *http.Request) {
 	if shouldDelete, err := handlePasteExpiryAndBurn(ctx, paste); err != nil {
 		log.Error("Error handling paste expiry/burn", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "Failed to process paste")
+
 		return
 	} else if shouldDelete {
 		respondWithError(w, http.StatusGone, "Paste has expired or been burned")
+
 		return
 	}
 
@@ -57,14 +62,16 @@ func GetPaste(w http.ResponseWriter, r *http.Request) {
 
 	paste, err := getPasteByUUID(ctx, pasteUUID)
 	if err != nil {
-		if err == ErrPasteNotFound {
+		switch err {
+		case ErrPasteNotFound:
 			respondWithError(w, http.StatusNotFound, "Paste not found")
-		} else if err == ErrInvalidUUID {
+		case ErrInvalidUUID:
 			respondWithError(w, http.StatusBadRequest, "Invalid UUID format")
-		} else {
+		default:
 			log.Error("Error retrieving paste", zap.Error(err))
 			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve paste")
 		}
+
 		return
 	}
 
@@ -72,23 +79,25 @@ func GetPaste(w http.ResponseWriter, r *http.Request) {
 	if shouldDelete, err := handlePasteExpiryAndBurn(ctx, paste); err != nil {
 		log.Error("Error handling paste expiry/burn", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "Failed to process paste")
+
 		return
 	} else if shouldDelete {
 		respondWithError(w, http.StatusGone, "Paste has expired or been burned")
+
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, paste)
 }
 
-// Constants for paste constraints
+// Constants for paste constraints.
 const (
 	MaxPasteSize     = 10 * 1024 * 1024 // 10MB
 	MinExpiryMinutes = 1
 	MaxExpiryMinutes = 60 * 24 * 365 // 1 year
 )
 
-// Security patterns to detect potentially dangerous content
+// Security patterns to detect potentially dangerous content.
 var (
 	dangerousPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)<script[^>]*>.*?</script>`),
@@ -98,7 +107,7 @@ var (
 		regexp.MustCompile(`(?i)on\w+\s*=`), // onclick, onload, etc.
 	}
 
-	// Allowed languages for syntax highlighting
+	// Allowed languages for syntax highlighting.
 	allowedLanguages = map[string]bool{
 		"":           true, // plain text
 		"txt":        true,
@@ -127,17 +136,20 @@ var (
 // On success, responds with HTTP 201 and the paste UUID in JSON; on failure, returns an appropriate error response.
 func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
 	log.Info("CreatePaste called")
 
 	// Parse form with size limit
 	r.Body = http.MaxBytesReader(w, r.Body, MaxPasteSize)
 	if err := r.ParseForm(); err != nil {
 		log.Error("Error parsing form data", zap.Error(err))
+
 		if err.Error() == "http: request body too large" {
 			respondWithError(w, http.StatusRequestEntityTooLarge, "Request body too large")
 		} else {
 			respondWithError(w, http.StatusBadRequest, "Invalid form data")
 		}
+
 		return
 	}
 
@@ -146,6 +158,7 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("Error parsing expiry time", zap.Error(err))
 		respondWithDetailedError(w, http.StatusBadRequest, "Invalid expiry time", "INVALID_EXPIRY", "Expiry time must be a number")
+
 		return
 	}
 
@@ -153,6 +166,7 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	if expireTime < MinExpiryMinutes || expireTime > MaxExpiryMinutes {
 		respondWithDetailedError(w, http.StatusBadRequest, "Invalid expiry time", "EXPIRY_OUT_OF_RANGE",
 			"Expiry time must be between 1 minute and 1 year")
+
 		return
 	}
 
@@ -167,26 +181,31 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	sanitizedContent, err := sanitizeContent(req.Content)
 	if err != nil {
 		log.Error("Error sanitizing content", zap.Error(err))
-		if err == ErrInvalidUTF8 {
+
+		if errors.Is(err, ErrInvalidUTF8) {
 			respondWithError(w, http.StatusBadRequest, "Content contains invalid UTF-8 encoding")
 		} else {
 			respondWithError(w, http.StatusBadRequest, "Invalid content")
 		}
+
 		return
 	}
+
 	req.Content = sanitizedContent
 
 	if err := validateCreatePasteRequest(req); err != nil {
 		log.Error("Error validating create paste request", zap.Error(err))
+
 		if err == ErrEmptyContent {
 			respondWithError(w, http.StatusBadRequest, "Content cannot be empty")
 		} else if err == ErrContentTooLarge {
 			respondWithError(w, http.StatusRequestEntityTooLarge, "Content exceeds maximum size")
-		} else if err == ErrInvalidLanguage {
+		} else if errors.Is(err, ErrInvalidLanguage) {
 			respondWithError(w, http.StatusBadRequest, "Invalid or unsupported language")
 		} else {
 			respondWithError(w, http.StatusBadRequest, err.Error())
 		}
+
 		return
 	}
 
@@ -194,6 +213,7 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("Error generating UUID", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "Failed to generate paste ID")
+
 		return
 	}
 
@@ -208,6 +228,7 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	if err := storage.DBConn.WithContext(ctx).Create(&paste).Error; err != nil {
 		log.Error("Error saving paste to database", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "Failed to save paste")
+
 		return
 	}
 
@@ -225,12 +246,14 @@ func DeletePaste(w http.ResponseWriter, r *http.Request) {
 
 	if pasteUUIDStr == "" {
 		respondWithError(w, http.StatusBadRequest, "UUID parameter is required")
+
 		return
 	}
 
 	pasteUUID, err := uuid.Parse(pasteUUIDStr)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid UUID format")
+
 		return
 	}
 
@@ -241,6 +264,7 @@ func DeletePaste(w http.ResponseWriter, r *http.Request) {
 			log.Error("Error deleting paste", zap.Error(err))
 			respondWithError(w, http.StatusInternalServerError, "Failed to delete paste")
 		}
+
 		return
 	}
 
@@ -261,8 +285,10 @@ func getPasteByUUID(ctx context.Context, uuidStr string) (*models.Paste, error) 
 		if err.Error() == "record not found" {
 			return nil, ErrPasteNotFound
 		}
+
 		return nil, err
 	}
+
 	return paste, nil
 }
 
@@ -273,10 +299,13 @@ func handlePasteExpiryAndBurn(ctx context.Context, paste *models.Paste) (bool, e
 	}
 
 	if paste.Burn {
-		if err := storage.DBConn.WithContext(ctx).Delete(paste).Error; err != nil {
+		err := storage.DBConn.WithContext(ctx).Delete(paste).Error
+		if err != nil {
 			log.Error("Error deleting paste after reading", zap.Error(err))
+
 			return false, err
 		}
+
 		return true, nil
 	}
 
@@ -290,9 +319,11 @@ func deletePasteByUUID(ctx context.Context, pasteUUID uuid.UUID) error {
 	if result.Error != nil {
 		return result.Error
 	}
+
 	if result.RowsAffected == 0 {
 		return ErrPasteNotFound
 	}
+
 	return nil
 }
 
@@ -301,6 +332,7 @@ func sanitizeContent(content string) (string, error) {
 	// Validate UTF-8 encoding
 	if !utf8.ValidString(content) {
 		log.Warn("Invalid UTF-8 content detected")
+
 		return "", ErrInvalidUTF8
 	}
 
@@ -354,6 +386,7 @@ func validateCreatePasteRequest(req models.CreatePasteRequest) error {
 	// Validate language
 	if !validateLanguage(req.Language) {
 		log.Warn("Invalid language specified", zap.String("language", req.Language))
+
 		return ErrInvalidLanguage
 	}
 
@@ -383,17 +416,20 @@ func validateCreatePasteRequest(req models.CreatePasteRequest) error {
 // Helper function to parse the expiry time.
 func parseExpiryTime(expiryTimeStr string) time.Time {
 	expiryTimestamp, _ := time.Parse(time.RFC3339, expiryTimeStr)
+
 	return expiryTimestamp
 }
 
-// DatabaseHealthCheck performs a health check on the database connection
+// DatabaseHealthCheck performs a health check on the database connection.
 func DatabaseHealthCheck(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if err := storage.HealthCheck(ctx); err != nil {
+	err := storage.HealthCheck(ctx)
+	if err != nil {
 		log.Error("Database health check failed", zap.Error(err))
 		respondWithDetailedError(w, http.StatusServiceUnavailable,
 			"Database health check failed", "DB_UNHEALTHY", err.Error())
+
 		return
 	}
 

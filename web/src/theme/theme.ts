@@ -231,6 +231,7 @@ const createLightTheme = (): ThemeOptions => ({
   },
   typography,
   shape,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shadows: shadows.light as any,
 });
 
@@ -283,6 +284,7 @@ const createDarkTheme = (): ThemeOptions => ({
   },
   typography,
   shape,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shadows: shadows.dark as any,
 });
 
