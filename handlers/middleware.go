@@ -43,7 +43,12 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 			}
 
 			// Get session ID from cookie or generate one
-			sessionID := getOrCreateSessionID(w, r)
+			sessionID, err := getOrCreateSessionID(w, r)
+			if err != nil {
+				log.Error("Failed to get or create session ID for CSRF validation", zap.Error(err))
+				respondWithError(w, http.StatusInternalServerError, "Session management failure")
+				return
+			}
 			
 			if !validateCSRFToken(token, sessionID, config.Conf.CSRFKey) {
 				log.Warn("CSRF validation failed",
@@ -217,16 +222,20 @@ const (
 )
 
 // getOrCreateSessionID gets the session ID from cookie or creates a new one
-func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) string {
+func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) (string, error) {
 	// Try to get existing session ID from cookie
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
 		if cookie.Value != "" {
-			return cookie.Value
+			return cookie.Value, nil
 		}
 	}
 
 	// Generate new session ID
-	sessionID := generateSecureRandomString(32)
+	sessionID, err := generateSecureRandomString(32)
+	if err != nil {
+		log.Error("Failed to generate secure session ID", zap.Error(err))
+		return "", fmt.Errorf("failed to generate session ID: %w", err)
+	}
 	
 	// Set session cookie (HttpOnly, Secure in production, SameSite)
 	http.SetCookie(w, &http.Cookie{
@@ -239,17 +248,17 @@ func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) string {
 		MaxAge:   int(csrfTokenTTL.Seconds()),
 	})
 
-	return sessionID
+	return sessionID, nil
 }
 
 // generateSecureRandomString generates a cryptographically secure random string
-func generateSecureRandomString(length int) string {
+func generateSecureRandomString(length int) (string, error) {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
-		// Fallback to timestamp-based generation if crypto/rand fails
-		return fmt.Sprintf("%d", time.Now().UnixNano())
+		// Fail securely - do not use predictable fallbacks
+		return "", fmt.Errorf("failed to generate secure random string: %w", err)
 	}
-	return hex.EncodeToString(bytes)
+	return hex.EncodeToString(bytes), nil
 }
 
 // generateCSRFToken creates a secure CSRF token using HMAC with timestamp
@@ -327,7 +336,12 @@ func GetCSRFToken(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 
-	sessionID := getOrCreateSessionID(w, r)
+	sessionID, err := getOrCreateSessionID(w, r)
+	if err != nil {
+		log.Error("Failed to get or create session ID for CSRF token generation", zap.Error(err))
+		return "" // Fail securely by returning empty token
+	}
+	
 	token := generateCSRFToken(sessionID, config.Conf.CSRFKey)
 
 	// Also set as cookie for double-submit pattern
