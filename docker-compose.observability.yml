@@ -90,7 +90,7 @@ services:
 
   # PostgreSQL for Wastebin (optional - for development)
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:6567bca8d7bc8c82c5922425a0baee57be8402df92bae5eacad5f01ae9544daa
     environment:
       POSTGRES_DB: wastebin
       POSTGRES_USER: wastebin

@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:9857836c9ee4268391bb5b09f9f157f3c91bb15821bb77969642813b0d00518d
 
 # Build arguments for multi-platform builds
 ARG TARGETOS
@@ -9,7 +9,7 @@ ARG TARGETVARIANT=""
 # ================================
 # Frontend Build Stage
 # ================================
-FROM node:22-alpine AS frontend
+FROM node:22-alpine@sha256:5539840ce9d013fa13e3b9814c9353024be7ac75aca5db6d039504a56c04ea59 AS frontend
 
 # Install security updates and cleanup in one layer
 RUN apk update && apk upgrade && apk add --no-cache \
@@ -93,7 +93,7 @@ RUN go build -a \
 # ================================
 # Final Runtime Stage
 # ================================
-FROM gcr.io/distroless/static:nonroot-amd64
+FROM gcr.io/distroless/static:nonroot-amd64@sha256:3a31438b71f1e1c7d4210da01a4a5b9bc55deaba115788fdf8b2bf0269ec1d69
 
 # Add metadata labels
 LABEL \
