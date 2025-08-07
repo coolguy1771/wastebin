@@ -1,4 +1,4 @@
-package tests
+package tests_test
 
 import (
 	"fmt"
@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coolguy1771/wastebin/pkg/testutil"
-	"github.com/coolguy1771/wastebin/routes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/coolguy1771/wastebin/pkg/testutil"
+	"github.com/coolguy1771/wastebin/routes"
 )
 
 // TestSecurityHeaders verifies that required security headers are present.
@@ -55,7 +56,7 @@ func TestSQLInjectionProtection(t *testing.T) {
 	}
 
 	for _, payload := range sqlInjectionPayloads {
-		t.Run("SQLInjection-"+payload[:min(len(payload), 20)], func(t *testing.T) {
+		t.Run("SQLInjection-"+payload[:minInt(len(payload), 20)], func(t *testing.T) {
 			// Test SQL injection in paste content
 			resp := server.MakeRequest(testutil.HTTPRequest{
 				Method: "POST",
@@ -105,7 +106,7 @@ func TestXSSProtection(t *testing.T) {
 	}
 
 	for _, payload := range xssPayloads {
-		t.Run("XSS-"+payload[:min(len(payload), 20)], func(t *testing.T) {
+		t.Run("XSS-"+payload[:minInt(len(payload), 20)], func(t *testing.T) {
 			// Create paste with XSS payload
 			resp := server.MakeRequest(testutil.HTTPRequest{
 				Method: "POST",
@@ -383,7 +384,7 @@ func TestDirectoryTraversal(t *testing.T) {
 	}
 
 	for _, payload := range traversalPayloads {
-		t.Run("DirectoryTraversal-"+payload[:min(len(payload), 20)], func(t *testing.T) {
+		t.Run("DirectoryTraversal-"+payload[:minInt(len(payload), 20)], func(t *testing.T) {
 			resp := server.MakeRequest(testutil.HTTPRequest{
 				Method: "GET",
 				Path:   "/api/v1/paste/" + payload,
@@ -451,7 +452,7 @@ func TestInformationDisclosure(t *testing.T) {
 }
 
 // Helper function for min.
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

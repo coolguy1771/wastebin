@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -10,12 +11,13 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/coolguy1771/wastebin/log"
-	"github.com/coolguy1771/wastebin/models"
-	"github.com/coolguy1771/wastebin/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+
+	"github.com/coolguy1771/wastebin/log"
+	"github.com/coolguy1771/wastebin/models"
+	"github.com/coolguy1771/wastebin/storage"
 )
 
 // GetRawPaste retrieves a paste's raw content by its UUID.
@@ -25,10 +27,10 @@ func GetRawPaste(w http.ResponseWriter, r *http.Request) {
 
 	paste, err := getPasteByUUID(ctx, pasteUUID)
 	if err != nil {
-		switch err {
-		case ErrPasteNotFound:
+		switch {
+		case errors.Is(err, ErrPasteNotFound):
 			respondWithError(w, http.StatusNotFound, "Paste not found")
-		case ErrInvalidUUID:
+		case errors.Is(err, ErrInvalidUUID):
 			respondWithError(w, http.StatusBadRequest, "Invalid UUID format")
 		default:
 			log.Error("Error retrieving paste", zap.Error(err))
@@ -39,8 +41,9 @@ func GetRawPaste(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the paste has expired or is a burn-after-read paste.
-	if shouldDelete, err := handlePasteExpiryAndBurn(ctx, paste); err != nil {
-		log.Error("Error handling paste expiry/burn", zap.Error(err))
+	shouldDelete, expiryErr := handlePasteExpiryAndBurn(ctx, paste)
+	if expiryErr != nil {
+		log.Error("Error handling paste expiry/burn", zap.Error(expiryErr))
 		respondWithError(w, http.StatusInternalServerError, "Failed to process paste")
 
 		return
@@ -52,7 +55,10 @@ func GetRawPaste(w http.ResponseWriter, r *http.Request) {
 
 	// Set content type and return raw content.
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte(paste.Content))
+	_, err = w.Write([]byte(paste.Content))
+	if err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+	}
 }
 
 // GetPaste retrieves a paste by its UUID and returns it as JSON.
@@ -62,10 +68,10 @@ func GetPaste(w http.ResponseWriter, r *http.Request) {
 
 	paste, err := getPasteByUUID(ctx, pasteUUID)
 	if err != nil {
-		switch err {
-		case ErrPasteNotFound:
+		switch {
+		case errors.Is(err, ErrPasteNotFound):
 			respondWithError(w, http.StatusNotFound, "Paste not found")
-		case ErrInvalidUUID:
+		case errors.Is(err, ErrInvalidUUID):
 			respondWithError(w, http.StatusBadRequest, "Invalid UUID format")
 		default:
 			log.Error("Error retrieving paste", zap.Error(err))
@@ -76,8 +82,9 @@ func GetPaste(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the paste has expired or is a burn-after-read paste.
-	if shouldDelete, err := handlePasteExpiryAndBurn(ctx, paste); err != nil {
-		log.Error("Error handling paste expiry/burn", zap.Error(err))
+	shouldDelete, expiryErr := handlePasteExpiryAndBurn(ctx, paste)
+	if expiryErr != nil {
+		log.Error("Error handling paste expiry/burn", zap.Error(expiryErr))
 		respondWithError(w, http.StatusInternalServerError, "Failed to process paste")
 
 		return
@@ -98,6 +105,8 @@ const (
 )
 
 // Security patterns to detect potentially dangerous content.
+//
+//nolint:gochecknoglobals // These patterns are used across the application and are read-only.
 var (
 	dangerousPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)<script[^>]*>.*?</script>`),
@@ -108,6 +117,7 @@ var (
 	}
 
 	// Allowed languages for syntax highlighting.
+	//nolint:gochecknoglobals // These languages are used across the application and are read-only.
 	allowedLanguages = map[string]bool{
 		"":           true, // plain text
 		"txt":        true,
@@ -139,73 +149,14 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("CreatePaste called")
 
-	// Parse form with size limit
-	r.Body = http.MaxBytesReader(w, r.Body, MaxPasteSize)
-	if err := r.ParseForm(); err != nil {
-		log.Error("Error parsing form data", zap.Error(err))
-
-		if err.Error() == "http: request body too large" {
-			respondWithError(w, http.StatusRequestEntityTooLarge, "Request body too large")
-		} else {
-			respondWithError(w, http.StatusBadRequest, "Invalid form data")
-		}
-
-		return
-	}
-
-	// Parse and validate expiry time
-	expireTime, err := strconv.ParseInt(r.FormValue("expires"), 10, 64)
+	req, err := parseCreatePasteRequest(w, r)
 	if err != nil {
-		log.Error("Error parsing expiry time", zap.Error(err))
-		respondWithDetailedError(w, http.StatusBadRequest, "Invalid expiry time", "INVALID_EXPIRY", "Expiry time must be a number")
-
 		return
 	}
 
-	// Validate expiry time range
-	if expireTime < MinExpiryMinutes || expireTime > MaxExpiryMinutes {
-		respondWithDetailedError(w, http.StatusBadRequest, "Invalid expiry time", "EXPIRY_OUT_OF_RANGE",
-			"Expiry time must be between 1 minute and 1 year")
-
-		return
-	}
-
-	req := models.CreatePasteRequest{
-		Content:    r.FormValue("text"),
-		Burn:       r.FormValue("burn") == "true",
-		Language:   r.FormValue("extension"),
-		ExpiryTime: time.Now().Add(time.Duration(expireTime) * time.Minute).Format(time.RFC3339),
-	}
-
-	// Sanitize content before validation
-	sanitizedContent, err := sanitizeContent(req.Content)
-	if err != nil {
-		log.Error("Error sanitizing content", zap.Error(err))
-
-		if errors.Is(err, ErrInvalidUTF8) {
-			respondWithError(w, http.StatusBadRequest, "Content contains invalid UTF-8 encoding")
-		} else {
-			respondWithError(w, http.StatusBadRequest, "Invalid content")
-		}
-
-		return
-	}
-
-	req.Content = sanitizedContent
-
-	if err := validateCreatePasteRequest(req); err != nil {
-		log.Error("Error validating create paste request", zap.Error(err))
-
-		if err == ErrEmptyContent {
-			respondWithError(w, http.StatusBadRequest, "Content cannot be empty")
-		} else if err == ErrContentTooLarge {
-			respondWithError(w, http.StatusRequestEntityTooLarge, "Content exceeds maximum size")
-		} else if errors.Is(err, ErrInvalidLanguage) {
-			respondWithError(w, http.StatusBadRequest, "Invalid or unsupported language")
-		} else {
-			respondWithError(w, http.StatusBadRequest, err.Error())
-		}
-
+	validationErr := ValidateCreatePasteRequest(req)
+	if validationErr != nil {
+		handleValidationError(w, validationErr)
 		return
 	}
 
@@ -213,7 +164,6 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("Error generating UUID", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "Failed to generate paste ID")
-
 		return
 	}
 
@@ -222,13 +172,13 @@ func CreatePaste(w http.ResponseWriter, r *http.Request) {
 		Content:         req.Content,
 		Burn:            req.Burn,
 		Language:        req.Language,
-		ExpiryTimestamp: parseExpiryTime(req.ExpiryTime),
+		ExpiryTimestamp: ParseExpiryTime(req.ExpiryTime),
 	}
 
-	if err := storage.DBConn.WithContext(ctx).Create(&paste).Error; err != nil {
-		log.Error("Error saving paste to database", zap.Error(err))
+	dbErr := storage.DBConn.WithContext(ctx).Create(&paste).Error
+	if dbErr != nil {
+		log.Error("Error saving paste to database", zap.Error(dbErr))
 		respondWithError(w, http.StatusInternalServerError, "Failed to save paste")
-
 		return
 	}
 
@@ -257,11 +207,12 @@ func DeletePaste(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := deletePasteByUUID(ctx, pasteUUID); err != nil {
-		if err == ErrPasteNotFound {
+	deleteErr := deletePasteByUUID(ctx, pasteUUID)
+	if deleteErr != nil {
+		if errors.Is(deleteErr, ErrPasteNotFound) {
 			respondWithError(w, http.StatusNotFound, "Paste not found")
 		} else {
-			log.Error("Error deleting paste", zap.Error(err))
+			log.Error("Error deleting paste", zap.Error(deleteErr))
 			respondWithError(w, http.StatusInternalServerError, "Failed to delete paste")
 		}
 
@@ -281,15 +232,119 @@ func getPasteByUUID(ctx context.Context, uuidStr string) (*models.Paste, error) 
 	}
 
 	paste := &models.Paste{}
-	if err := storage.DBConn.WithContext(ctx).First(paste, "uuid = ?", pasteUUID).Error; err != nil {
-		if err.Error() == "record not found" {
+	dbErr := storage.DBConn.WithContext(ctx).First(paste, "uuid = ?", pasteUUID).Error
+	if dbErr != nil {
+		if dbErr.Error() == "record not found" {
 			return nil, ErrPasteNotFound
 		}
 
-		return nil, err
+		return nil, dbErr
 	}
 
 	return paste, nil
+}
+
+// parseCreatePasteRequest parses and validates the create paste request from form data.
+func parseCreatePasteRequest(w http.ResponseWriter, r *http.Request) (models.CreatePasteRequest, error) {
+	var err error
+
+	// Parse form with size limit
+	r.Body = http.MaxBytesReader(w, r.Body, MaxPasteSize)
+	err = r.ParseForm()
+	if err != nil {
+		log.Error("Error parsing form data", zap.Error(err))
+
+		if err.Error() == "http: request body too large" {
+			respondWithError(w, http.StatusRequestEntityTooLarge, "Request body too large")
+		} else {
+			respondWithError(w, http.StatusBadRequest, "Invalid form data")
+		}
+
+		return models.CreatePasteRequest{
+			Content:    "",
+			Burn:       false,
+			Language:   "",
+			ExpiryTime: "",
+		}, fmt.Errorf("parse form: %w", err)
+	}
+
+	// Parse and validate expiry time
+	expireTime, err := strconv.ParseInt(r.FormValue("expires"), 10, 64)
+	if err != nil {
+		log.Error("Error parsing expiry time", zap.Error(err))
+		respondWithDetailedError(
+			w,
+			http.StatusBadRequest,
+			"Invalid expiry time",
+			"INVALID_EXPIRY",
+			"Expiry time must be a number",
+		)
+
+		return models.CreatePasteRequest{
+			Content:    "",
+			Burn:       false,
+			Language:   "",
+			ExpiryTime: "",
+		}, fmt.Errorf("parse expiry time: %w", err)
+	}
+
+	// Validate expiry time range
+	if expireTime < MinExpiryMinutes || expireTime > MaxExpiryMinutes {
+		respondWithDetailedError(w, http.StatusBadRequest, "Invalid expiry time", "EXPIRY_OUT_OF_RANGE",
+			"Expiry time must be between 1 minute and 1 year")
+
+		return models.CreatePasteRequest{
+			Content:    "",
+			Burn:       false,
+			Language:   "",
+			ExpiryTime: "",
+		}, errors.New("expiry out of range")
+	}
+
+	req := models.CreatePasteRequest{
+		Content:    r.FormValue("text"),
+		Burn:       r.FormValue("burn") == "true",
+		Language:   r.FormValue("extension"),
+		ExpiryTime: time.Now().Add(time.Duration(expireTime) * time.Minute).Format(time.RFC3339),
+	}
+
+	// Sanitize content before validation
+	sanitizedContent, err := sanitizeContent(req.Content)
+	if err != nil {
+		log.Error("Error sanitizing content", zap.Error(err))
+
+		if errors.Is(err, ErrInvalidUTF8) {
+			respondWithError(w, http.StatusBadRequest, "Content contains invalid UTF-8 encoding")
+		} else {
+			respondWithError(w, http.StatusBadRequest, "Invalid content")
+		}
+
+		return models.CreatePasteRequest{
+			Content:    "",
+			Burn:       false,
+			Language:   "",
+			ExpiryTime: "",
+		}, err
+	}
+
+	req.Content = sanitizedContent
+	return req, nil
+}
+
+// handleValidationError handles validation errors and sends appropriate HTTP responses.
+func handleValidationError(w http.ResponseWriter, validationErr error) {
+	log.Error("Error validating create paste request", zap.Error(validationErr))
+
+	switch {
+	case errors.Is(validationErr, ErrEmptyContent):
+		respondWithError(w, http.StatusBadRequest, "Content cannot be empty")
+	case errors.Is(validationErr, ErrContentTooLarge):
+		respondWithError(w, http.StatusRequestEntityTooLarge, "Content exceeds maximum size")
+	case errors.Is(validationErr, ErrInvalidLanguage):
+		respondWithError(w, http.StatusBadRequest, "Invalid or unsupported language")
+	default:
+		respondWithError(w, http.StatusBadRequest, validationErr.Error())
+	}
 }
 
 // Helper function to handle paste expiry and burn-after-read.
@@ -368,9 +423,9 @@ func validateLanguage(language string) bool {
 	return allowedLanguages[language]
 }
 
-// validateCreatePasteRequest checks the validity of a CreatePasteRequest, ensuring content is present and within size limits, the language is allowed, and the expiry time is valid and within acceptable bounds.
+// ValidateCreatePasteRequest checks the validity of a CreatePasteRequest, ensuring content is present and within size limits, the language is allowed, and the expiry time is valid and within acceptable bounds.
 // Returns a specific error if any validation fails.
-func validateCreatePasteRequest(req models.CreatePasteRequest) error {
+func ValidateCreatePasteRequest(req models.CreatePasteRequest) error {
 	if req.Content == "" {
 		return ErrEmptyContent
 	}
@@ -391,33 +446,27 @@ func validateCreatePasteRequest(req models.CreatePasteRequest) error {
 	}
 
 	// Validate expiry time
-	if req.ExpiryTime == "" {
-		return ErrInvalidExpiry
-	}
-
-	expiryTimestamp, err := time.Parse(time.RFC3339, req.ExpiryTime)
+	expiryTime, err := time.Parse(time.RFC3339, req.ExpiryTime)
 	if err != nil {
 		return ErrInvalidExpiry
 	}
 
-	if expiryTimestamp.Before(time.Now()) {
+	if expiryTime.Before(time.Now()) {
 		return ErrExpiryInPast
-	}
-
-	// Additional security: Check if expiry is too far in the future (sanity check)
-	maxFutureTime := time.Now().Add(time.Duration(MaxExpiryMinutes) * time.Minute)
-	if expiryTimestamp.After(maxFutureTime) {
-		return ErrExpiryTooFar
 	}
 
 	return nil
 }
 
-// Helper function to parse the expiry time.
-func parseExpiryTime(expiryTimeStr string) time.Time {
-	expiryTimestamp, _ := time.Parse(time.RFC3339, expiryTimeStr)
+// ParseExpiryTime parses an RFC3339 expiry time string and returns a time.Time value.
+// Returns zero time if parsing fails.
+func ParseExpiryTime(expiryTimeStr string) time.Time {
+	t, err := time.Parse(time.RFC3339, expiryTimeStr)
+	if err != nil {
+		return time.Time{}
+	}
 
-	return expiryTimestamp
+	return t
 }
 
 // DatabaseHealthCheck performs a health check on the database connection.

@@ -127,7 +127,7 @@ export const collectWebVitals = (): Promise<WebVitals> => {
     new PerformanceObserver(list => {
       const entries = list.getEntries();
       entries.forEach((entry: PerformanceEntry) => {
-        vitals.fid = entry.processingStart - entry.startTime;
+        vitals.fid = (entry as any).processingStart - entry.startTime;
       });
     }).observe({ entryTypes: ['first-input'] });
 
@@ -135,8 +135,8 @@ export const collectWebVitals = (): Promise<WebVitals> => {
     let clsValue = 0;
     new PerformanceObserver(list => {
       const entries = list.getEntries();
-      entries.forEach((entry: PerformanceEntry & { value?: number; hadRecentInput?: boolean }) => {
-        if (!entry.hadRecentInput) {
+      entries.forEach((entry: any) => {
+        if (!entry.hadRecentInput && typeof entry.value === 'number') {
           clsValue += entry.value;
         }
       });
@@ -193,7 +193,7 @@ export const logBundleInfo = (): void => {
   }
 
   // Log resource loading
-  const resources = performance.getEntriesByType('resource');
+  const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
   const jsResources = resources.filter(r => r.name.endsWith('.js'));
   const cssResources = resources.filter(r => r.name.endsWith('.css'));
 
@@ -201,7 +201,7 @@ export const logBundleInfo = (): void => {
   console.log(`JavaScript files: ${jsResources.length}`);
   console.log(`CSS files: ${cssResources.length}`);
 
-  const totalSize = resources.reduce((sum, resource: PerformanceResourceTiming) => {
+  const totalSize = resources.reduce((sum: number, resource: PerformanceResourceTiming) => {
     return sum + (resource.transferSize || 0);
   }, 0);
 
@@ -226,7 +226,8 @@ export const useRenderTime = (componentName: string) => {
 };
 
 // Lazy loading utilities
-export const createLazyComponent = <T extends React.ComponentType>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const createLazyComponent = <T extends React.ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
   fallback?: React.ComponentType
 ) => {
@@ -240,7 +241,7 @@ export const createLazyComponent = <T extends React.ComponentType>(
           ? React.createElement(fallback)
           : React.createElement('div', {}, 'Loading...'),
       },
-      React.createElement(LazyComponent, props)
+      React.createElement(LazyComponent, props as any)
     );
 };
 
@@ -282,5 +283,4 @@ export const registerServiceWorker = async (): Promise<boolean> => {
   return false;
 };
 
-// Export React import for useRenderTime hook
 import React from 'react';

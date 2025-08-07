@@ -31,23 +31,32 @@ var (
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(ErrorResponse{Error: message})
+	err := json.NewEncoder(w).Encode(ErrorResponse{Error: message, Code: "", Details: ""})
+	if err != nil {
+		http.Error(w, "Failed to encode error response", http.StatusInternalServerError)
+	}
 }
 
 // respondWithDetailedError sends a JSON error response with additional details.
 func respondWithDetailedError(w http.ResponseWriter, code int, message, errorCode, details string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(ErrorResponse{
+	err := json.NewEncoder(w).Encode(ErrorResponse{
 		Error:   message,
 		Code:    errorCode,
 		Details: details,
 	})
+	if err != nil {
+		http.Error(w, "Failed to encode error response", http.StatusInternalServerError)
+	}
 }
 
 // respondWithJSON sends a JSON response.
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(payload)
+	err := json.NewEncoder(w).Encode(payload)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }

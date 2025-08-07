@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -25,7 +26,7 @@ func (p *Provider) HTTPMiddleware() func(http.Handler) http.Handler {
 			p.MetricsProvider.IncrementActiveRequests(r.Context())
 
 			// Create a wrapped response writer to capture status code
-			ww := &wrappedResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+			ww := &wrappedResponseWriter{ResponseWriter: w, statusCode: http.StatusOK, bytesWritten: 0}
 
 			// Get the route pattern for better cardinality
 			routePattern := getRoutePattern(r)
@@ -67,7 +68,8 @@ func (p *Provider) HTTPMiddleware() func(http.Handler) http.Handler {
 					attribute.Int64("http.response_size", ww.bytesWritten),
 				)
 
-				if ww.statusCode >= 400 {
+				const errorStatusCodeThreshold = 400
+				if ww.statusCode >= errorStatusCodeThreshold {
 					span.SetStatus(codes.Error, http.StatusText(ww.statusCode))
 				}
 			}
@@ -85,33 +87,39 @@ type wrappedResponseWriter struct {
 	bytesWritten int64
 }
 
+// WriteHeader sets the HTTP status code and calls the underlying ResponseWriter's WriteHeader.
 func (w *wrappedResponseWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
+// Write writes data to the response and tracks bytes written.
 func (w *wrappedResponseWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
+	if err != nil {
+		return n, fmt.Errorf("response writer write: %w", err)
+	}
+
 	w.bytesWritten += int64(n)
 
-	return n, err
+	return n, nil
 }
 
 // getRoutePattern extracts the route pattern from the request context.
-func getRoutePattern(r *http.Request) string {
+func getRoutePattern(req *http.Request) string {
 	// Try to get the route pattern from chi context
-	if rctx := chi.RouteContext(r.Context()); rctx != nil {
+	if rctx := chi.RouteContext(req.Context()); rctx != nil {
 		return rctx.RoutePattern()
 	}
 
 	// Fallback to the URL path
-	return r.URL.Path
+	return req.URL.Path
 }
 
 // HealthCheckMiddleware provides observability for health check endpoints.
 func (p *Provider) HealthCheckMiddleware() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, span := p.TracingProvider.StartSpan(r.Context(), "health_check")
+	return func(w http.ResponseWriter, req *http.Request) {
+		ctx, span := p.TracingProvider.StartSpan(req.Context(), "health_check")
 		defer span.End()
 
 		start := time.Now()
@@ -119,13 +127,13 @@ func (p *Provider) HealthCheckMiddleware() http.HandlerFunc {
 		// Perform health checks here
 		// For now, just return 200 OK
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 
 		// Record metrics
 		duration := time.Since(start)
 		p.MetricsProvider.RecordHTTPRequest(
 			ctx,
-			r.Method,
+			req.Method,
 			"/health",
 			"200",
 			duration,

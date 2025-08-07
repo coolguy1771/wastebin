@@ -1,12 +1,15 @@
 package main
 
 import (
+	"go.uber.org/zap"
+
 	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/server"
-	"go.uber.org/zap"
 )
 
 func main() {
+	log.Setup()
+
 	// Create server instance with dependency injection
 	srv, err := server.New()
 	if err != nil {
@@ -14,7 +17,8 @@ func main() {
 	}
 
 	// Start the server
-	if err := srv.Start(); err != nil {
-		log.Fatal("Server failed to start", zap.Error(err))
+	startErr := srv.Start()
+	if startErr != nil {
+		log.Fatal("Server failed to start", zap.Error(startErr))
 	}
 }

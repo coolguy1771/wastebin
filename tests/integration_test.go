@@ -1,4 +1,4 @@
-package tests
+package tests_test
 
 import (
 	"fmt"
@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coolguy1771/wastebin/pkg/testutil"
-	"github.com/coolguy1771/wastebin/routes"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/coolguy1771/wastebin/pkg/testutil"
+	"github.com/coolguy1771/wastebin/routes"
 )
 
 // TestFullPasteWorkflow tests the complete paste lifecycle.
@@ -457,6 +458,7 @@ func TestDataPersistence(t *testing.T) {
 
 	// Create multiple pastes
 	pasteIDs := make([]string, 5)
+
 	for i := range 5 {
 		resp := server.MakeRequest(testutil.HTTPRequest{
 			Method: "POST",

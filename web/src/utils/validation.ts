@@ -32,7 +32,10 @@ export const PASTE_CONSTRAINTS = {
 } as const;
 
 // Custom validation functions
-export const validatePasteContent = (content: string): string | null => {
+export const validatePasteContent = (content: unknown): string | null => {
+  if (typeof content !== 'string') {
+    return 'Invalid content type';
+  }
   if (!content || content.trim().length === 0) {
     return 'Paste content cannot be empty';
   }
@@ -46,21 +49,26 @@ export const validatePasteContent = (content: string): string | null => {
   }
 
   return null;
-};
+}
 
-export const validateLanguage = (language: string): string | null => {
+export const validateLanguage = (language: unknown): string | null => {
+  if (typeof language !== 'string') {
+    return 'Invalid language type';
+  }
   if (!language) {
     return 'Please select a language';
   }
 
-  if (!PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES.includes(language)) {
+  if (!PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES.includes(language as typeof PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES[number])) {
     return 'Please select a supported language';
   }
 
   return null;
-};
-
-export const validateExpiry = (expiryMinutes: string): string | null => {
+}
+export const validateExpiry = (expiryMinutes: unknown): string | null => {
+  if (typeof expiryMinutes !== 'string') {
+    return 'Invalid expiry time type';
+  }
   if (!expiryMinutes) {
     return 'Please select an expiry time';
   }
@@ -86,26 +94,28 @@ export const validateExpiry = (expiryMinutes: string): string | null => {
   return null;
 };
 
+
 // Validation rules for paste creation form
 export interface PasteFormData {
   content: string;
   language: string;
   expires: string;
   burn: boolean;
+  [key: string]: unknown;
 }
 
 export const pasteValidationRules: Record<keyof PasteFormData, ValidationRule> = {
   content: {
     required: true,
-    custom: validatePasteContent,
+    custom: validatePasteContent as (value: unknown) => string | null,
   },
   language: {
     required: true,
-    custom: validateLanguage,
+    custom: validateLanguage as (value: unknown) => string | null,
   },
   expires: {
     required: true,
-    custom: validateExpiry,
+    custom: validateExpiry as (value: unknown) => string | null,
   },
   burn: {
     // No validation needed for boolean

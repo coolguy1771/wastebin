@@ -13,9 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/log"
-	"go.uber.org/zap"
 )
 
 // CSRFProtectionMiddleware enforces CSRF protection on state-changing HTTP requests using the double-submit cookie pattern.
@@ -191,22 +192,24 @@ func SecurityAuditMiddleware(next http.Handler) http.Handler {
 
 // Helper functions
 
+// responseWriter wraps http.ResponseWriter to capture the status code for auditing.
 type responseWriter struct {
 	http.ResponseWriter
 
 	statusCode int
 }
 
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
+// WriteHeader sets the HTTP status code and calls the underlying ResponseWriter's WriteHeader.
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.statusCode = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
 }
 
 // getRealIP extracts the client's real IP address from the HTTP request headers or falls back to the remote address.
 // It checks the X-Forwarded-For and X-Real-IP headers, returning the first valid IP found, or the RemoteAddr if none are set.
-func getRealIP(r *http.Request) string {
+func getRealIP(req *http.Request) string {
 	// Check X-Forwarded-For header first
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
 		// Get the first IP in case of multiple
 		if idx := strings.Index(xff, ","); idx != -1 {
 			return strings.TrimSpace(xff[:idx])
@@ -216,32 +219,34 @@ func getRealIP(r *http.Request) string {
 	}
 
 	// Check X-Real-IP header
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+	if xri := req.Header.Get("X-Real-IP"); xri != "" {
 		return strings.TrimSpace(xri)
 	}
 
 	// Fall back to RemoteAddr
-	return r.RemoteAddr
+	return req.RemoteAddr
 }
 
 const (
-	csrfTokenTTL      = 24 * time.Hour // Token expires after 24 hours
-	sessionCookieName = "wastebin_session"
-	csrfCookieName    = "wastebin_csrf"
+	csrfTokenTTL        = 24 * time.Hour // Token expires after 24 hours
+	sessionCookieName   = "wastebin_session"
+	csrfCookieName      = "wastebin_csrf"
+	sessionIDByteLength = 32
 )
 
 // getOrCreateSessionID retrieves the session ID from the session cookie or generates and sets a new secure session ID cookie if none exists.
 // Returns the session ID string, or an error if session ID generation fails.
-func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) (string, error) {
+func getOrCreateSessionID(w http.ResponseWriter, req *http.Request) (string, error) {
 	// Try to get existing session ID from cookie
-	if cookie, err := r.Cookie(sessionCookieName); err == nil {
+	cookie, err := req.Cookie(sessionCookieName)
+	if err == nil {
 		if cookie.Value != "" {
 			return cookie.Value, nil
 		}
 	}
 
 	// Generate new session ID
-	sessionID, err := generateSecureRandomString(32)
+	sessionID, err := generateSecureRandomString(sessionIDByteLength)
 	if err != nil {
 		log.Error("Failed to generate secure session ID", zap.Error(err))
 
@@ -266,7 +271,8 @@ func getOrCreateSessionID(w http.ResponseWriter, r *http.Request) (string, error
 // Returns an error if random data generation fails.
 func generateSecureRandomString(length int) (string, error) {
 	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
+	_, err := rand.Read(bytes)
+	if err != nil {
 		// Fail securely - do not use predictable fallbacks
 		return "", fmt.Errorf("failed to generate secure random string: %w", err)
 	}
@@ -308,7 +314,8 @@ func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
 	token := string(tokenBytes)
 
 	parts := strings.Split(token, ":")
-	if len(parts) != 3 {
+	const expectedAuthParts = 3
+	if len(parts) != expectedAuthParts {
 		log.Warn("Invalid CSRF token format")
 
 		return false

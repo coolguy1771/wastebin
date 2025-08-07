@@ -9,8 +9,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/metric"
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
+
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
@@ -91,13 +92,23 @@ func NewMetricsProvider(config MetricsConfig, serviceName, version, environment 
 
 	// Initialize application-specific metrics
 	provider := &MetricsProvider{
-		meter:    meter,
-		provider: mp,
-		config:   config,
+		meter:               meter,
+		provider:            mp,
+		config:              config,
+		HTTPRequestDuration: nil,
+		HTTPRequestsTotal:   nil,
+		HTTPActiveRequests:  nil,
+		DBConnectionsActive: nil,
+		DBQueryDuration:     nil,
+		PasteCreatedTotal:   nil,
+		PasteViewedTotal:    nil,
+		PasteDeletedTotal:   nil,
+		SystemUptime:        nil,
 	}
 
-	if err := provider.initializeMetrics(); err != nil {
-		return nil, fmt.Errorf("failed to initialize metrics: %w", err)
+	initErr := provider.initializeMetrics()
+	if initErr != nil {
+		return nil, fmt.Errorf("failed to initialize metrics: %w", initErr)
 	}
 
 	return provider, nil
@@ -189,6 +200,8 @@ func (mp *MetricsProvider) initializeMetrics() error {
 }
 
 // Meter returns the OpenTelemetry meter.
+//
+//nolint:ireturn // OpenTelemetry API requires returning an interface.
 func (mp *MetricsProvider) Meter() metric.Meter {
 	return mp.meter
 }
@@ -196,7 +209,10 @@ func (mp *MetricsProvider) Meter() metric.Meter {
 // Shutdown gracefully shuts down the metrics provider.
 func (mp *MetricsProvider) Shutdown(ctx context.Context) error {
 	if mp.provider != nil {
-		return mp.provider.Shutdown(ctx)
+		err := mp.provider.Shutdown(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to shutdown metrics provider: %w", err)
+		}
 	}
 
 	return nil

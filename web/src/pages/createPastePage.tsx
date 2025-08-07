@@ -33,6 +33,8 @@ import TimerIcon from '@mui/icons-material/Timer';
 import CodeIcon from '@mui/icons-material/Code';
 import FireIcon from '@mui/icons-material/Whatshot';
 
+// PasteFormData is imported from validation.ts
+
 const CreatePastePage: React.FC = () => {
   const navigate = useNavigate();
   const { isMobile } = useResponsive();
@@ -208,7 +210,10 @@ const CreatePastePage: React.FC = () => {
               Language
             </Typography>
             <FormControl fullWidth size="small">
-              <Select {...getSelectProps('language')}>
+              <Select
+                {...getSelectProps('language')}
+                value={String(values.language)}
+              >
                 {languageOptions.map(option => (
                   <MenuItem key={option.value} value={option.value}>
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -236,13 +241,13 @@ const CreatePastePage: React.FC = () => {
               Expiration
             </Typography>
             <FormControl fullWidth size="small">
-              <Select {...getSelectProps('expires')}>
-                {expiryOptions.map(option => (
+              <Select {...getSelectProps('expires')} value={String(values.expires)}>
+                {expiryOptions.map((option: { value: string; label: string }) => (
                   <MenuItem key={option.value} value={option.value}>
-                    <Stack direction="row" alignItems="center" spacing={1}>
-                      <TimerIcon fontSize="small" />
-                      <span>{option.label}</span>
-                    </Stack>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <TimerIcon fontSize="small" />
+                    <span>{option.label}</span>
+                  </Stack>
                   </MenuItem>
                 ))}
               </Select>
@@ -269,8 +274,8 @@ const CreatePastePage: React.FC = () => {
                   checked={values.burn}
                   onChange={e =>
                     getFieldProps('burn').onChange({
-                      target: { value: e.target.checked },
-                    } as React.ChangeEvent<HTMLInputElement>)
+                      target: { value: e.target.checked }
+                    } as unknown as React.ChangeEvent<HTMLInputElement>)
                   }
                 />
               }

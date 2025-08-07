@@ -1,18 +1,34 @@
-package tests
+package tests_test
 
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/coolguy1771/wastebin/pkg/testutil"
-	"github.com/coolguy1771/wastebin/routes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/coolguy1771/wastebin/log"
+	"github.com/coolguy1771/wastebin/pkg/testutil"
+	"github.com/coolguy1771/wastebin/routes"
 )
+
+func TestMain(m *testing.M) {
+	// Initialize logger for tests
+	logger, err := log.New(os.Stdout, "ERROR")
+	if err != nil {
+		panic(err)
+	}
+	log.ResetDefault(logger)
+
+	// Run tests
+	code := m.Run()
+	os.Exit(code)
+}
 
 // BenchmarkCreatePaste benchmarks paste creation performance.
 func BenchmarkCreatePaste(b *testing.B) {
@@ -229,13 +245,30 @@ func TestConcurrentOperations(t *testing.T) {
 	t.Logf("  Total Operations: %d", totalOps)
 	t.Logf("  Success Rate: %.2f%%", successRate)
 	t.Logf("  Throughput: %.2f ops/sec", float64(totalOps)/totalDuration.Seconds())
-	t.Logf("  Average Create Time: %v", totalCreateTime/time.Duration(createOps))
-	t.Logf("  Average Read Time: %v", totalReadTime/time.Duration(readOps))
+	if createOps > 0 {
+		t.Logf("  Average Create Time: %v", totalCreateTime/time.Duration(createOps))
+	} else {
+		t.Logf("  Average Create Time: N/A (no successful creates)")
+	}
+	if readOps > 0 {
+		t.Logf("  Average Read Time: %v", totalReadTime/time.Duration(readOps))
+	} else {
+		t.Logf("  Average Read Time: N/A (no successful reads)")
+	}
 
 	// Assertions
 	assert.Greater(t, successRate, 95.0, "Success rate should be > 95%")
-	assert.Less(t, totalCreateTime/time.Duration(createOps), 100*time.Millisecond, "Average create time should be < 100ms")
-	assert.Less(t, totalReadTime/time.Duration(readOps), 50*time.Millisecond, "Average read time should be < 50ms")
+	if createOps > 0 {
+		assert.Less(
+			t,
+			totalCreateTime/time.Duration(createOps),
+			100*time.Millisecond,
+			"Average create time should be < 100ms",
+		)
+	}
+	if readOps > 0 {
+		assert.Less(t, totalReadTime/time.Duration(readOps), 50*time.Millisecond, "Average read time should be < 50ms")
+	}
 }
 
 // TestLoadTesting performs basic load testing.
@@ -516,6 +549,7 @@ func calculatePercentiles(durations []time.Duration) map[int]time.Duration {
 	}
 
 	percentiles := make(map[int]time.Duration)
+
 	for _, p := range []int{50, 90, 95, 99} {
 		idx := (p * len(durations)) / 100
 		if idx >= len(durations) {

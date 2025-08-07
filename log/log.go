@@ -1,6 +1,8 @@
 package log
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -8,109 +10,130 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func (l *Logger) Debug(msg string, fields ...zap.Field) {
-	l.l.Debug(msg, fields...)
-}
-
-func (l *Logger) Info(msg string, fields ...zap.Field) {
-	l.l.Info(msg, fields...)
-}
-
-func (l *Logger) Warn(msg string, fields ...zap.Field) {
-	l.l.Warn(msg, fields...)
-}
-
-func (l *Logger) Error(msg string, fields ...zap.Field) {
-	l.l.Error(msg, fields...)
-}
-
-func (l *Logger) DPanic(msg string, fields ...zap.Field) {
-	l.l.DPanic(msg, fields...)
-}
-
-func (l *Logger) Panic(msg string, fields ...zap.Field) {
-	l.l.Panic(msg, fields...)
-}
-
-func (l *Logger) Fatal(msg string, fields ...zap.Field) {
-	l.l.Fatal(msg, fields...)
-}
-
-// function variables for all field types
-// in github.com/uber-go/zap/field.go
-
-var (
-	Skip       = zap.Skip
-	Binary     = zap.Binary
-	Bool       = zap.Bool
-	Boolp      = zap.Boolp
-	ByteString = zap.ByteString
-	Float64    = zap.Float64
-	Float64p   = zap.Float64p
-	Float32    = zap.Float32
-	Float32p   = zap.Float32p
-	Durationp  = zap.Durationp
-	Any        = zap.Any
-	Object     = zap.Object
-
-	Info   = std.Info
-	Warn   = std.Warn
-	Error  = std.Error
-	DPanic = std.DPanic
-	Panic  = std.Panic
-	Fatal  = std.Fatal
-	Debug  = std.Debug
-)
-
-// not safe for concurrent use.
-func ResetDefault(l *Logger) {
-	std = l
-	Info = std.Info
-	Warn = std.Warn
-	Error = std.Error
-	DPanic = std.DPanic
-	Panic = std.Panic
-	Fatal = std.Fatal
-	Debug = std.Debug
-}
-
+// Logger wraps zap.Logger to provide a simplified logging interface.
 type Logger struct {
 	l     *zap.Logger // zap ensure that zap.Logger is safe for concurrent use
 	level zapcore.Level
 }
 
-var std, _ = New(os.Stdout, "INFO")
-
-func Default() *Logger {
-	return std
+// Debug logs a debug message with optional fields.
+func (l *Logger) Debug(msg string, fields ...zap.Field) {
+	l.l.Debug(msg, fields...)
 }
 
-func New(writer io.Writer, level string) (logger *Logger, err error) {
+// Info logs an info message with optional fields.
+func (l *Logger) Info(msg string, fields ...zap.Field) {
+	l.l.Info(msg, fields...)
+}
+
+// Warn logs a warning message with optional fields.
+func (l *Logger) Warn(msg string, fields ...zap.Field) {
+	l.l.Warn(msg, fields...)
+}
+
+// Error logs an error message with optional fields.
+func (l *Logger) Error(msg string, fields ...zap.Field) {
+	l.l.Error(msg, fields...)
+}
+
+// DPanic logs a panic message with optional fields in development mode.
+func (l *Logger) DPanic(msg string, fields ...zap.Field) {
+	l.l.DPanic(msg, fields...)
+}
+
+// Panic logs a panic message with optional fields.
+func (l *Logger) Panic(msg string, fields ...zap.Field) {
+	l.l.Panic(msg, fields...)
+}
+
+// Fatal logs a fatal message with optional fields.
+func (l *Logger) Fatal(msg string, fields ...zap.Field) {
+	l.l.Fatal(msg, fields...)
+}
+
+// Function variables for all field types in github.com/uber-go/zap/field.go.
+//
+//nolint:gochecknoglobals // These are function variables from the zap library, not global state.
+var (
+	// Skip creates a field that does nothing.
+	Skip = zap.Skip
+	// Binary creates a field that carries an opaque binary blob.
+	Binary = zap.Binary
+	// Bool creates a field that carries a bool.
+	Bool = zap.Bool
+	// Boolp creates a field that carries a *bool.
+	Boolp = zap.Boolp
+	// ByteString creates a field that carries UTF-8 encoded text as a []byte.
+	ByteString = zap.ByteString
+	// Float64 creates a field that carries a float64.
+	Float64 = zap.Float64
+	// Float64p creates a field that carries a *float64.
+	Float64p = zap.Float64p
+	// Float32 creates a field that carries a float32.
+	Float32 = zap.Float32
+	// Float32p creates a field that carries a *float32.
+	Float32p = zap.Float32p
+	// Durationp creates a field that carries a *time.Duration.
+	Durationp = zap.Durationp
+	// Any takes a key and an arbitrary value and chooses the best way to represent them as a field.
+	Any = zap.Any
+	// Object creates a field that carries an ObjectMarshaler.
+	Object = zap.Object
+)
+
+// Default logger instance.
+//
+//nolint:gochecknoglobals // This is the default logger instance, which is a singleton.
+var defaultLogger *Logger
+
+// Setup initializes the default logger.
+func Setup() {
+	var err error
+
+	defaultLogger, err = New(os.Stdout, "INFO")
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize default logger: %v", err))
+	}
+}
+
+// Default returns the default logger instance.
+func Default() *Logger {
+	return defaultLogger
+}
+
+// New creates a new Logger with the specified writer and log level.
+func New(writer io.Writer, level string) (*Logger, error) {
 	parsedAtomicLevel, err := zapcore.ParseLevel(level)
 	if err != nil {
-		return logger, err
+		return nil, fmt.Errorf("failed to parse log level %q: %w", level, err)
 	}
 
 	if writer == nil {
-		return logger, err
+		return nil, errors.New("writer cannot be nil")
 	}
 
 	cfg := zap.NewProductionConfig()
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(cfg.EncoderConfig),
 		zapcore.AddSync(writer),
-		zapcore.Level(parsedAtomicLevel),
+		parsedAtomicLevel,
 	)
-	logger = &Logger{
+	logger := &Logger{
 		l:     zap.New(core),
 		level: parsedAtomicLevel,
 	}
 
-	return logger, err
+	return logger, nil
 }
 
+// Sync flushes any buffered log entries.
 func (l *Logger) Sync() error {
-	return l.l.Sync()
+	err := l.l.Sync()
+	if err != nil {
+		return fmt.Errorf("failed to sync logger: %w", err)
+	}
+
+	return nil
 }
 
 // ZapLogger returns the underlying zap.Logger.
@@ -118,10 +141,46 @@ func (l *Logger) ZapLogger() *zap.Logger {
 	return l.l
 }
 
+// ResetDefault sets the default logger to the provided logger.
+// Not safe for concurrent use.
+func ResetDefault(l *Logger) {
+	defaultLogger = l
+}
+
+// Sync flushes any buffered log entries from the default logger.
 func Sync() error {
-	if std != nil {
-		return std.Sync()
+	if defaultLogger != nil {
+		return defaultLogger.Sync()
 	}
 
 	return nil
+}
+
+// Debug logs a debug message using the default logger.
+func Debug(msg string, fields ...zap.Field) {
+	defaultLogger.Debug(msg, fields...)
+}
+
+func Info(msg string, fields ...zap.Field) {
+	defaultLogger.Info(msg, fields...)
+}
+
+func Warn(msg string, fields ...zap.Field) {
+	defaultLogger.Warn(msg, fields...)
+}
+
+func Error(msg string, fields ...zap.Field) {
+	defaultLogger.Error(msg, fields...)
+}
+
+func DPanic(msg string, fields ...zap.Field) {
+	defaultLogger.DPanic(msg, fields...)
+}
+
+func Panic(msg string, fields ...zap.Field) {
+	defaultLogger.Panic(msg, fields...)
+}
+
+func Fatal(msg string, fields ...zap.Field) {
+	defaultLogger.Fatal(msg, fields...)
 }

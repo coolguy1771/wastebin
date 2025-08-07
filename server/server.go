@@ -11,13 +11,29 @@ import (
 	"syscall"
 	"time"
 
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/observability"
 	"github.com/coolguy1771/wastebin/routes"
 	"github.com/coolguy1771/wastebin/storage"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
+)
+
+const (
+	// Server timeout constants.
+	readTimeout       = 15 * time.Second
+	writeTimeout      = 15 * time.Second
+	idleTimeout       = 60 * time.Second
+	readHeaderTimeout = 5 * time.Second
+	maxHeaderBytes    = 1 << 20 // 1MB
+
+	// Shutdown timeout constants.
+	shutdownTimeout = 30 * time.Second
+
+	// Storage retry constants.
+	storageRetryAttempts = 3
 )
 
 // Server represents the application server with its dependencies.
@@ -55,18 +71,20 @@ func New() (*Server, error) {
 		},
 	}
 
-	obs, err := observability.New(observabilityConfig, logger.ZapLogger())
+	obs, err := observability.New(&observabilityConfig, logger.ZapLogger())
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize observability: %w", err)
 	}
 
 	// Initialize and connect to storage with observability
-	if err := storage.ConnectWithRetry(3, obs); err != nil {
+	err = storage.ConnectWithRetry(storageRetryAttempts, obs)
+	if err != nil {
 		return nil, fmt.Errorf("failed to initialize storage: %w", err)
 	}
 
 	// Run migrations
-	if err := storage.Migrate(); err != nil {
+	err = storage.Migrate()
+	if err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -87,15 +105,13 @@ func (s *Server) Start() error {
 
 	// Create HTTP server with enhanced security configuration
 	s.httpServer = &http.Server{
-		Addr:    ":" + s.config.WebappPort,
-		Handler: router,
-		// Add timeouts for security
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		MaxHeaderBytes:    1 << 20, // 1MB
-		// TLS configuration for enhanced security
+		Addr:              ":" + s.config.WebappPort,
+		Handler:           router,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+		ReadHeaderTimeout: readHeaderTimeout,
+		MaxHeaderBytes:    maxHeaderBytes,
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS13,
 			PreferServerCipherSuites: true,
@@ -108,6 +124,21 @@ func (s *Server) Start() error {
 				tls.TLS_CHACHA20_POLY1305_SHA256,
 				tls.TLS_AES_128_GCM_SHA256,
 			},
+			ClientAuth:             tls.NoClientCert,
+			ClientCAs:              nil,
+			InsecureSkipVerify:     false,
+			Certificates:           nil,
+			GetCertificate:         nil,
+			GetClientCertificate:   nil,
+			GetConfigForClient:     nil,
+			VerifyPeerCertificate:  nil,
+			KeyLogWriter:           nil,
+			SessionTicketsDisabled: false,
+			SessionTicketKey:       [32]byte{},
+			ClientSessionCache:     nil,
+			Time:                   nil,
+			Rand:                   nil,
+			NextProtos:             nil,
 		},
 	}
 
@@ -128,7 +159,7 @@ func (s *Server) startWithGracefulShutdown() error {
 		s.logger.Info("Received signal to shutdown server", zap.String("signal", sig.String()))
 
 		// Create shutdown context with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 
 		// Shutdown HTTP server
@@ -194,7 +225,7 @@ func (s *Server) Stop() error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	err := s.httpServer.Shutdown(ctx)
@@ -202,7 +233,12 @@ func (s *Server) Stop() error {
 		return fmt.Errorf("failed to shutdown HTTP server: %w", err)
 	}
 
-	return storage.Close()
+	err = storage.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close storage: %w", err)
+	}
+
+	return nil
 }
 
 // HealthCheck performs a comprehensive health check.

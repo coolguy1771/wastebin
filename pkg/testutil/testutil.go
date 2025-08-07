@@ -14,13 +14,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coolguy1771/wastebin/config"
-	"github.com/coolguy1771/wastebin/models"
-	"github.com/coolguy1771/wastebin/storage"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/coolguy1771/wastebin/config"
+	"github.com/coolguy1771/wastebin/models"
+	"github.com/coolguy1771/wastebin/storage"
+)
+
+const (
+	// HTTP client timeout for tests.
+	httpClientTimeout = 10 * time.Second
+
+	// Wait condition check interval.
+	waitCheckInterval = 10 * time.Millisecond
+
+	// Test data constants.
+	validExpiryMinutes = 60
+
+	OneMiB           = 1 << 20
+	largeContentSize = 11 * OneMiB // 11MB (exceeds 10MB limit)
+	DefaultMaxSize   = 10 * OneMiB // 10MB default for tests
+
+	expiredTimeOffset = -1 * time.Hour
+
+	// Default database configuration constants.
+	defaultDBMaxIdleConns = 5
+	defaultDBMaxOpenConns = 10
+	defaultDBPort         = 5432
 )
 
 // TestServer represents a test server instance.
@@ -39,6 +62,8 @@ type TestConfig struct {
 
 // NewTestServer creates a new test server with provided router.
 func NewTestServer(t *testing.T, router http.Handler, cfg *TestConfig) *TestServer {
+	t.Helper()
+
 	if cfg == nil {
 		cfg = &TestConfig{
 			UseInMemoryDB: true,
@@ -70,7 +95,7 @@ func (ts *TestServer) Close() {
 	if ts.DB != nil {
 		sqlDB, _ := ts.DB.DB()
 		if sqlDB != nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 	}
 }
@@ -82,6 +107,8 @@ func (ts *TestServer) URL() string {
 
 // setupTestDB sets up a test database.
 func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
+	t.Helper()
+
 	var (
 		db  *gorm.DB
 		err error
@@ -89,26 +116,70 @@ func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 
 	if useInMemory {
 		// Use in-memory SQLite for tests
-		db, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+			SkipDefaultTransaction:                   false,
+			DefaultTransactionTimeout:                0,
+			NamingStrategy:                           nil,
+			FullSaveAssociations:                     false,
+			NowFunc:                                  nil,
+			DryRun:                                   false,
+			PrepareStmt:                              false,
+			PrepareStmtMaxSize:                       0,
+			PrepareStmtTTL:                           0,
+			DisableAutomaticPing:                     false,
+			DisableForeignKeyConstraintWhenMigrating: false,
+			IgnoreRelationshipsWhenMigrating:         false,
+			DisableNestedTransaction:                 false,
+			AllowGlobalUpdate:                        false,
+			QueryFields:                              false,
+			CreateBatchSize:                          0,
+			TranslateError:                           false,
+			PropagateUnscoped:                        false,
+			ClauseBuilders:                           nil,
+			ConnPool:                                 nil,
+			Dialector:                                nil,
+			Plugins:                                  nil,
+		})
 		require.NoError(t, err, "Failed to connect to in-memory database")
 	} else {
 		// Use temporary file database
 		tempDB := fmt.Sprintf("test_%s.db", uuid.New().String())
-		db, err = gorm.Open(sqlite.Open(tempDB), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open(tempDB), &gorm.Config{
+			SkipDefaultTransaction:                   false,
+			DefaultTransactionTimeout:                0,
+			NamingStrategy:                           nil,
+			FullSaveAssociations:                     false,
+			NowFunc:                                  nil,
+			DryRun:                                   false,
+			PrepareStmt:                              false,
+			PrepareStmtMaxSize:                       0,
+			DisableForeignKeyConstraintWhenMigrating: false,
+			IgnoreRelationshipsWhenMigrating:         false,
+			DisableNestedTransaction:                 false,
+			AllowGlobalUpdate:                        false,
+			QueryFields:                              false,
+			TranslateError:                           false,
+			PropagateUnscoped:                        false,
+			ClauseBuilders:                           nil,
+			ConnPool:                                 nil,
+			Dialector:                                nil,
+			Plugins:                                  nil,
+		})
 		require.NoError(t, err, "Failed to connect to temp database")
 
 		// Clean up temp file after test
 		t.Cleanup(func() {
 			sqlDB, _ := db.DB()
 			if sqlDB != nil {
-				sqlDB.Close()
+				_ = sqlDB.Close()
 			}
 
-			os.Remove(tempDB)
+			_ = os.Remove(tempDB)
 		})
 	}
 
 	// Set the global DB connection for handlers to use
+	//nolint:reassign // DBConn is reassigned for test setup.
 	storage.DBConn = db
 
 	// Run migrations
@@ -120,17 +191,36 @@ func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 
 // setupTestConfig sets up test configuration.
 func setupTestConfig(enableLogging bool) {
+	//nolint:reassign // Conf is reassigned for test setup.
 	config.Conf = config.Config{
-		WebappPort:     "3000",
-		DBMaxIdleConns: 5,
-		DBMaxOpenConns: 10,
-		DBPort:         5432,
-		DBHost:         "localhost",
-		DBUser:         "test",
-		DBName:         "test",
-		LogLevel:       "INFO",
-		LocalDB:        true,
-		Dev:            true,
+		WebappPort:          "3000",
+		DBMaxIdleConns:      defaultDBMaxIdleConns,
+		DBMaxOpenConns:      defaultDBMaxOpenConns,
+		DBPort:              defaultDBPort,
+		DBHost:              "localhost",
+		DBUser:              "test",
+		DBPassword:          "",
+		DBName:              "test",
+		Dev:                 true,
+		TLSEnabled:          false,
+		TLSCertFile:         "",
+		TLSKeyFile:          "",
+		AllowedOrigins:      "",
+		RequireAuth:         false,
+		AuthUsername:        "",
+		AuthPassword:        "",
+		CSRFKey:             "",
+		MaxRequestSize:      DefaultMaxSize, // 10MB default for tests
+		LogLevel:            "INFO",
+		LocalDB:             true,
+		TracingEnabled:      false,
+		MetricsEnabled:      false,
+		ServiceName:         "",
+		ServiceVersion:      "",
+		Environment:         "",
+		OTLPTraceEndpoint:   "",
+		OTLPMetricsEndpoint: "",
+		MetricsInterval:     0,
 	}
 
 	if !enableLogging {
@@ -209,7 +299,7 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 	}
 
 	// Create request
-	httpReq, err := http.NewRequest(req.Method, ts.URL()+req.Path, bodyReader)
+	httpReq, err := http.NewRequestWithContext(context.Background(), req.Method, ts.URL()+req.Path, bodyReader)
 	require.NoError(ts.t, err, "Failed to create HTTP request")
 
 	// Add headers
@@ -228,7 +318,7 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 	}
 
 	// Make request
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: httpClientTimeout}
 	resp, err := client.Do(httpReq)
 	require.NoError(ts.t, err, "Failed to make HTTP request")
 
@@ -242,13 +332,15 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 		StatusCode: resp.StatusCode,
 		Headers:    resp.Header,
 		Body:       body,
+		JSON:       nil,
 	}
 
 	// Try to parse JSON
 	if len(body) > 0 && strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 		var jsonBody map[string]interface{}
-		err := json.Unmarshal(body, &jsonBody)
-		if err == nil {
+
+		jsonErr := json.Unmarshal(body, &jsonBody)
+		if jsonErr == nil {
 			response.JSON = jsonBody
 		}
 	}
@@ -257,7 +349,11 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 }
 
 // AssertJSONResponse asserts that the response contains expected JSON.
-func (ts *TestServer) AssertJSONResponse(resp *HTTPResponse, expectedStatus int, expectedFields map[string]interface{}) {
+func (ts *TestServer) AssertJSONResponse(
+	resp *HTTPResponse,
+	expectedStatus int,
+	expectedFields map[string]interface{},
+) {
 	require.Equal(ts.t, expectedStatus, resp.StatusCode, "Unexpected status code")
 	require.NotNil(ts.t, resp.JSON, "Response is not JSON")
 
@@ -280,10 +376,12 @@ func (ts *TestServer) AssertError(resp *HTTPResponse, expectedStatus int, expect
 
 // WaitForCondition waits for a condition to be true with timeout.
 func WaitForCondition(t *testing.T, condition func() bool, timeout time.Duration, message string) {
+	t.Helper()
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	ticker := time.NewTicker(10 * time.Millisecond)
+	ticker := time.NewTicker(waitCheckInterval)
 	defer ticker.Stop()
 
 	for {
@@ -313,6 +411,7 @@ func (ts *TestServer) GetPasteFromDB(pasteUUID uuid.UUID) *models.Paste {
 // CountPastesInDB returns the number of pastes in the database.
 func (ts *TestServer) CountPastesInDB() int64 {
 	var count int64
+
 	ts.DB.Model(&models.Paste{}).Count(&count)
 
 	return count
@@ -326,11 +425,12 @@ func (ts *TestServer) CleanupPastes() {
 // CreateExpiredPaste creates an expired paste for testing.
 func (ts *TestServer) CreateExpiredPaste() *models.Paste {
 	paste := &models.Paste{
+		Model:           gorm.Model{},
 		UUID:            uuid.New(),
 		Content:         "This paste is expired",
-		Language:        "txt",
 		Burn:            false,
-		ExpiryTimestamp: time.Now().Add(-1 * time.Hour), // 1 hour ago
+		Language:        "txt",
+		ExpiryTimestamp: time.Now().Add(expiredTimeOffset), // 1 hour ago
 	}
 
 	err := ts.DB.Create(paste).Error
@@ -339,34 +439,45 @@ func (ts *TestServer) CreateExpiredPaste() *models.Paste {
 	return paste
 }
 
-// MockTimeNow can be used to mock time.Now() in tests.
+// MockTime can be used to mock time.Now() in tests.
 type MockTime struct {
 	current time.Time
 }
 
+// NewMockTime creates a new mock time instance.
 func NewMockTime(t time.Time) *MockTime {
 	return &MockTime{current: t}
 }
 
+// Now returns the current mock time.
 func (m *MockTime) Now() time.Time {
 	return m.current
 }
 
+// Add advances the mock time by the given duration.
 func (m *MockTime) Add(d time.Duration) {
 	m.current = m.current.Add(d)
 }
 
 // TestData contains commonly used test data.
-var TestData = struct {
+func TestData() struct {
 	ValidPasteContent   string
 	ValidLanguage       string
 	ValidExpiryMinutes  int
 	LargePasteContent   string
 	InvalidExpiryString string
-}{
-	ValidPasteContent:   "Hello, World! This is a test paste.",
-	ValidLanguage:       "txt",
-	ValidExpiryMinutes:  60,
-	LargePasteContent:   strings.Repeat("A", 11*1024*1024), // 11MB (exceeds 10MB limit)
-	InvalidExpiryString: "invalid-expiry",
+} {
+	return struct {
+		ValidPasteContent   string
+		ValidLanguage       string
+		ValidExpiryMinutes  int
+		LargePasteContent   string
+		InvalidExpiryString string
+	}{
+		ValidPasteContent:   "Hello, World! This is a test paste.",
+		ValidLanguage:       "txt",
+		ValidExpiryMinutes:  validExpiryMinutes,
+		LargePasteContent:   strings.Repeat("A", largeContentSize), // 11MB (exceeds 10MB limit)
+		InvalidExpiryString: "invalid-expiry",
+	}
 }

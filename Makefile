@@ -41,7 +41,7 @@ clean:
 	rm -f coverage.out coverage.html
 	rm -f benchmark.txt
 
-# Run tests
+# Run unit tests only (excludes integration tests)
 test:
 	WASTEBIN_LOCAL_DB=true WASTEBIN_LOG_LEVEL=ERROR $(GOTEST) -v -race ./...
 
@@ -49,9 +49,21 @@ test:
 test-coverage:
 	@./scripts/test-coverage.sh
 
+# Run unit tests with coverage
+test-unit-coverage:
+	WASTEBIN_LOCAL_DB=true WASTEBIN_LOG_LEVEL=ERROR $(GOTEST) -v -race -coverprofile=coverage.out ./...
+	$(GOCMD) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+# Run integration tests with coverage  
+test-integration-coverage:
+	WASTEBIN_LOCAL_DB=true WASTEBIN_LOG_LEVEL=ERROR $(GOTEST) -v -tags=integration -coverprofile=coverage-integration.out ./...
+	$(GOCMD) tool cover -html=coverage-integration.out -o coverage-integration.html
+	@echo "Integration coverage report generated: coverage-integration.html"
+
 # Run integration tests
 test-integration:
-	WASTEBIN_LOCAL_DB=true WASTEBIN_LOG_LEVEL=ERROR $(GOTEST) -v -tags=integration ./tests/...
+	WASTEBIN_LOCAL_DB=true WASTEBIN_LOG_LEVEL=ERROR $(GOTEST) -v -tags=integration ./...
 
 # Run security tests
 test-security:
@@ -61,8 +73,16 @@ test-security:
 test-performance:
 	WASTEBIN_LOCAL_DB=true WASTEBIN_LOG_LEVEL=ERROR $(GOTEST) -v ./tests/ -run TestPerformance -timeout 5m
 
-# Run all tests
-test-all: test test-integration test-security test-performance
+# Run all tests including unit and integration
+test-all:
+	@echo "Running unit tests..."
+	@$(MAKE) test
+	@echo "Running integration tests..."
+	@$(MAKE) test-integration
+	@echo "Running security tests..."
+	@$(MAKE) test-security  
+	@echo "Running performance tests..."
+	@$(MAKE) test-performance
 
 # Run benchmarks
 benchmark:
@@ -160,7 +180,7 @@ help:
 	@echo "  build              Build the binary"
 	@echo "  build-linux        Build for Linux"
 	@echo "  clean              Clean build artifacts"
-	@echo "  test               Run unit tests"
+	@echo "  test               Run unit tests only (excludes integration tests)"
 	@echo "  test-coverage      Run tests with coverage report"
 	@echo "  test-integration   Run integration tests"
 	@echo "  test-security      Run security tests"

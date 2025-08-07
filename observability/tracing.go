@@ -5,11 +5,13 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
@@ -95,6 +97,8 @@ func NewTracingProvider(config TracingConfig) (*TracingProvider, error) {
 }
 
 // Tracer returns the OpenTelemetry tracer.
+//
+//nolint:ireturn // OpenTelemetry API requires returning an interface.
 func (tp *TracingProvider) Tracer() oteltrace.Tracer {
 	return tp.tracer
 }
@@ -102,18 +106,31 @@ func (tp *TracingProvider) Tracer() oteltrace.Tracer {
 // Shutdown gracefully shuts down the tracing provider.
 func (tp *TracingProvider) Shutdown(ctx context.Context) error {
 	if tp.provider != nil {
-		return tp.provider.Shutdown(ctx)
+		err := tp.provider.Shutdown(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to shutdown tracing provider: %w", err)
+		}
 	}
 
 	return nil
 }
 
 // StartSpan is a convenience method to start a new span.
-func (tp *TracingProvider) StartSpan(ctx context.Context, name string, opts ...oteltrace.SpanStartOption) (context.Context, oteltrace.Span) {
-	return tp.tracer.Start(ctx, name, opts...)
+//
+//nolint:ireturn,spancheck // OpenTelemetry API requires returning an interface, and the span is ended by the caller.
+func (tp *TracingProvider) StartSpan(
+	ctx context.Context,
+	name string,
+	opts ...oteltrace.SpanStartOption,
+) (context.Context, oteltrace.Span) {
+	spanCtx, span := tp.tracer.Start(ctx, name, opts...)
+
+	return spanCtx, span
 }
 
 // GetSpanFromContext retrieves the current span from context.
+//
+//nolint:ireturn // OpenTelemetry API requires returning an interface.
 func GetSpanFromContext(ctx context.Context) oteltrace.Span {
 	return oteltrace.SpanFromContext(ctx)
 }
@@ -136,10 +153,9 @@ func AddSpanError(ctx context.Context, err error) {
 }
 
 // SetSpanAttributes sets attributes on the current span.
-func SetSpanAttributes(ctx context.Context, attributes ...oteltrace.SpanStartOption) {
+func SetSpanAttributes(ctx context.Context, attributes ...attribute.KeyValue) {
 	span := oteltrace.SpanFromContext(ctx)
 	if span.IsRecording() {
-		// Extract attributes from SpanStartOptions and set them
-		// This is a helper function - in practice you'd use span.SetAttributes directly
+		span.SetAttributes(attributes...)
 	}
 }

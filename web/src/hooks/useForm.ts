@@ -35,14 +35,14 @@ export interface UseFormReturn<T> {
   reset: () => void;
   handleSubmit: (e?: React.FormEvent) => Promise<void>;
   getFieldProps: (field: keyof T) => {
-    value: T[keyof T];
+    value: T[keyof T] | string;
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
     onBlur: () => void;
     error: boolean;
     helperText: string | undefined;
   };
   getSelectProps: (field: keyof T) => {
-    value: T[keyof T];
+    value: T[keyof T] | string;
     onChange: (e: SelectChangeEvent) => void;
     onBlur: () => void;
     error: boolean;
@@ -205,15 +205,15 @@ export function useForm<T extends Record<string, unknown>>({
   // Get field props for easy integration with Material-UI
   const getFieldProps = useCallback(
     (field: keyof T) => ({
-      value: values[field] || '',
+      value: values[field] ?? '',
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setValue(field, e.target.value);
+        setValue(field, e.target.value as T[keyof T]);
       },
       onBlur: () => {
         setFieldTouched(field, true);
       },
       error: !!(touched[field] && errors[field]),
-      helperText: touched[field] ? errors[field] : undefined,
+      helperText: touched[field] && errors[field] ? String(errors[field]) : undefined,
     }),
     [values, errors, touched, setValue, setFieldTouched]
   );
@@ -221,9 +221,9 @@ export function useForm<T extends Record<string, unknown>>({
   // Get select props for Material-UI Select components
   const getSelectProps = useCallback(
     (field: keyof T) => ({
-      value: values[field] || '',
+      value: values[field] ?? '',
       onChange: (e: SelectChangeEvent) => {
-        setValue(field, e.target.value);
+        setValue(field, e.target.value as T[keyof T]);
       },
       onBlur: () => {
         setFieldTouched(field, true);
