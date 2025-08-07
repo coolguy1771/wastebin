@@ -75,11 +75,20 @@ func CSRFProtectionMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+const (
+	// defaultMaxRequestSize is the default maximum request size (10MB).
+	defaultMaxRequestSize = 10 * 1024 * 1024
+)
+
 // RequestSizeLimitMiddleware returns middleware that limits the size of incoming HTTP request bodies to the specified maximum number of bytes.
 // If a request exceeds the limit, the server responds with HTTP 413 Request Entity Too Large.
 func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// If maxSize is 0 or negative, use a default
+			if maxSize <= 0 {
+				maxSize = defaultMaxRequestSize // Default to 10MB
+			}
 			// Wrap the request body with a limited reader
 			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 			next.ServeHTTP(w, r)

@@ -191,8 +191,11 @@ func TestConcurrentOperations(t *testing.T) {
 					duration:  opDuration,
 				}
 
-				if resp.StatusCode == http.StatusCreated {
-					pasteUUID := resp.JSON["uuid"].(string)
+				if resp.StatusCode == http.StatusCreated && resp.JSON != nil {
+					pasteUUID, ok := resp.JSON["uuid"].(string)
+					if !ok {
+						continue
+					}
 
 					// Read paste
 					opStart = time.Now()

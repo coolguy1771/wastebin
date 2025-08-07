@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,6 +24,11 @@ import (
 	"github.com/coolguy1771/wastebin/models"
 	"github.com/coolguy1771/wastebin/storage"
 )
+
+// testDBMutex protects concurrent access to the global storage.DBConn during tests.
+//
+//nolint:gochecknoglobals // Required for test synchronization
+var testDBMutex sync.Mutex
 
 const (
 	// HTTP client timeout for tests.
@@ -109,14 +115,20 @@ func (ts *TestServer) URL() string {
 func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 	t.Helper()
 
+	// Lock to prevent concurrent modification of global storage.DBConn
+	testDBMutex.Lock()
+	defer testDBMutex.Unlock()
+
 	var (
 		db  *gorm.DB
 		err error
 	)
 
 	if useInMemory {
-		// Use in-memory SQLite for tests
-		db, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		// Use a unique file-based SQLite database for each test to avoid conflicts
+		// In-memory databases don't work well with global storage.DBConn in parallel tests
+		tempDB := fmt.Sprintf("test_mem_%s.db", uuid.New().String())
+		db, err = gorm.Open(sqlite.Open(tempDB), &gorm.Config{
 			SkipDefaultTransaction:                   false,
 			DefaultTransactionTimeout:                0,
 			NamingStrategy:                           nil,
@@ -140,7 +152,16 @@ func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 			Dialector:                                nil,
 			Plugins:                                  nil,
 		})
-		require.NoError(t, err, "Failed to connect to in-memory database")
+		require.NoError(t, err, "Failed to connect to test database")
+
+		// Clean up temp file after test
+		t.Cleanup(func() {
+			sqlDB, _ := db.DB()
+			if sqlDB != nil {
+				_ = sqlDB.Close()
+			}
+			_ = os.Remove(tempDB)
+		})
 	} else {
 		// Use temporary file database
 		tempDB := fmt.Sprintf("test_%s.db", uuid.New().String())

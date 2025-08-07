@@ -588,7 +588,7 @@ func TestConcurrentPasteCreation(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Create multiple pastes concurrently
-	for i := range numGoroutines {
+	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()

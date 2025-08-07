@@ -50,9 +50,9 @@ func TestFullPasteWorkflow(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, getResp.StatusCode)
 	require.NotNil(t, getResp.JSON)
-	assert.Equal(t, "Integration test content", getResp.JSON["Content"])
-	assert.Equal(t, "go", getResp.JSON["Language"])
-	assert.Equal(t, false, getResp.JSON["Burn"])
+	assert.Equal(t, "Integration test content", getResp.JSON["content"])
+	assert.Equal(t, "go", getResp.JSON["language"])
+	assert.Equal(t, false, getResp.JSON["burn"])
 
 	// 3. Retrieve the paste via raw endpoint
 	rawResp := server.MakeRequest(testutil.HTTPRequest{
