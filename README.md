@@ -221,10 +221,61 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 ### Code Quality
 
 The project uses:
+
 - `golangci-lint` for Go code linting
 - `gofmt` for Go code formatting
 - ESLint and Prettier for TypeScript/React code
 - Comprehensive test coverage
+
+### Testing
+
+The project separates unit tests from integration tests for better organization and faster feedback:
+
+#### Unit Tests
+
+Unit tests are fast, isolated tests that don't require external dependencies:
+
+```bash
+# Run unit tests only
+make test
+
+# Run unit tests with coverage
+make test-unit-coverage
+
+# Run unit tests using script
+./scripts/test-unit.sh
+```
+
+#### Integration Tests
+
+Integration tests verify the system works end-to-end with real dependencies:
+
+```bash
+# Run integration tests
+make test-integration
+
+# Run integration tests with coverage
+make test-integration-coverage
+
+# Run integration tests using script
+./scripts/test-integration.sh
+```
+
+#### All Tests
+
+```bash
+# Run all tests (unit + integration + security + performance)
+make test-all
+
+# Run tests with full coverage report
+make test-coverage
+```
+
+#### Test Organization
+
+- Unit tests: `*_test.go` files with build tag `//go:build !integration`
+- Integration tests: `*_integration_test.go` files with build tag `//go:build integration`
+- Test utilities: `pkg/testutil/` package provides common test helpers
 
 ## License
 

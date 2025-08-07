@@ -18,13 +18,14 @@ type CreatePasteRequest struct {
 
 // Paste represents a paste entity stored in the database.
 type Paste struct {
-	gorm.Model
-
-	UUID            uuid.UUID `gorm:"type:uuid;primaryKey" json:"pasteId"`
-	Content         string    `                            json:"content"`
-	Burn            bool      `                            json:"burn"`
-	Language        string    `                            json:"language"`
-	ExpiryTimestamp time.Time `                            json:"expiryTimestamp"`
+	UUID            uuid.UUID      `gorm:"type:uuid;primaryKey" json:"pasteId"`
+	Content         string         `                            json:"content"`
+	Burn            bool           `                            json:"burn"`
+	Language        string         `                            json:"language"`
+	ExpiryTimestamp time.Time      `                            json:"expiryTimestamp"`
+	CreatedAt       time.Time      `                            json:"createdAt"`
+	UpdatedAt       time.Time      `                            json:"updatedAt"`
+	DeletedAt       gorm.DeletedAt `gorm:"index"                json:"-"`
 }
 
 // DB represents the database connection with optional logging and retry support.

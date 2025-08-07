@@ -37,4 +37,4 @@ export const triggerErrorBoundary = () => {
     throw new Error('Test error for error boundary');
   };
   return <ThrowError />;
-}; 
+};

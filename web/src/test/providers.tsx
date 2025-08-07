@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { ThemeContextProvider } from '@contexts/ThemeContext';
 import { SecurityProvider } from '@contexts/SecurityContext';
 import { ErrorBoundary } from '@components/ErrorBoundary';
@@ -9,14 +9,17 @@ export const AllProviders: React.FC<{
   children: ReactNode;
   initialEntries?: string[];
   withErrorBoundary?: boolean;
-}> = ({ children, withErrorBoundary = true }) => {
+}> = ({ children, initialEntries, withErrorBoundary = true }) => {
   const content = withErrorBoundary ? <ErrorBoundary>{children}</ErrorBoundary> : children;
 
+  const Router = initialEntries ? MemoryRouter : BrowserRouter;
+  const routerProps = initialEntries ? { initialEntries } : {};
+
   return (
-    <BrowserRouter>
+    <Router {...routerProps}>
       <SecurityProvider>
         <ThemeContextProvider>{content}</ThemeContextProvider>
       </SecurityProvider>
-    </BrowserRouter>
+    </Router>
   );
-}; 
+};

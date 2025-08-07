@@ -127,7 +127,10 @@ export const collectWebVitals = (): Promise<WebVitals> => {
     new PerformanceObserver(list => {
       const entries = list.getEntries();
       entries.forEach((entry: PerformanceEntry) => {
-        vitals.fid = (entry as any).processingStart - entry.startTime;
+        // Define a type for entries with processingStart
+        type FirstInputEntry = PerformanceEntry & { processingStart: number };
+        const firstInputEntry = entry as FirstInputEntry;
+        vitals.fid = firstInputEntry.processingStart - firstInputEntry.startTime;
       });
     }).observe({ entryTypes: ['first-input'] });
 
@@ -135,9 +138,12 @@ export const collectWebVitals = (): Promise<WebVitals> => {
     let clsValue = 0;
     new PerformanceObserver(list => {
       const entries = list.getEntries();
-      entries.forEach((entry: any) => {
-        if (!entry.hadRecentInput && typeof entry.value === 'number') {
-          clsValue += entry.value;
+      entries.forEach((entry: PerformanceEntry) => {
+        // LayoutShift interface extends PerformanceEntry with hadRecentInput and value
+        type LayoutShift = PerformanceEntry & { hadRecentInput: boolean; value: number };
+        const layoutShiftEntry = entry as LayoutShift;
+        if (!layoutShiftEntry.hadRecentInput && typeof layoutShiftEntry.value === 'number') {
+          clsValue += layoutShiftEntry.value;
         }
       });
       vitals.cls = clsValue;
@@ -241,7 +247,7 @@ export const createLazyComponent = <T extends React.ComponentType<any>>(
           ? React.createElement(fallback)
           : React.createElement('div', {}, 'Loading...'),
       },
-      React.createElement(LazyComponent, props as any)
+      React.createElement(LazyComponent, props as React.ComponentProps<T>)
     );
 };
 

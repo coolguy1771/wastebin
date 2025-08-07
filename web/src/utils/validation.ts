@@ -49,7 +49,7 @@ export const validatePasteContent = (content: unknown): string | null => {
   }
 
   return null;
-}
+};
 
 export const validateLanguage = (language: unknown): string | null => {
   if (typeof language !== 'string') {
@@ -59,12 +59,16 @@ export const validateLanguage = (language: unknown): string | null => {
     return 'Please select a language';
   }
 
-  if (!PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES.includes(language as typeof PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES[number])) {
+  if (
+    !PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES.includes(
+      language as (typeof PASTE_CONSTRAINTS.SUPPORTED_LANGUAGES)[number]
+    )
+  ) {
     return 'Please select a supported language';
   }
 
   return null;
-}
+};
 export const validateExpiry = (expiryMinutes: unknown): string | null => {
   if (typeof expiryMinutes !== 'string') {
     return 'Invalid expiry time type';
@@ -93,7 +97,6 @@ export const validateExpiry = (expiryMinutes: unknown): string | null => {
 
   return null;
 };
-
 
 // Validation rules for paste creation form
 export interface PasteFormData {

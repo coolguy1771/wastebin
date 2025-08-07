@@ -72,9 +72,9 @@ func TestConnectSQLite(t *testing.T) {
 	setupTestConfig(t, true)
 
 	err := storage.Connect(nil)
+	require.NoError(t, err, "Expected no error when connecting to SQLite")
 	defer storage.Close()
 
-	require.NoError(t, err, "Expected no error when connecting to SQLite")
 	assert.NotNil(t, storage.DBConn, "Expected DBConn to be initialized")
 }
 

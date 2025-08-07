@@ -425,7 +425,6 @@ func (ts *TestServer) CleanupPastes() {
 // CreateExpiredPaste creates an expired paste for testing.
 func (ts *TestServer) CreateExpiredPaste() *models.Paste {
 	paste := &models.Paste{
-		Model:           gorm.Model{},
 		UUID:            uuid.New(),
 		Content:         "This paste is expired",
 		Burn:            false,

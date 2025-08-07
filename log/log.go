@@ -158,29 +158,50 @@ func Sync() error {
 
 // Debug logs a debug message using the default logger.
 func Debug(msg string, fields ...zap.Field) {
+	if defaultLogger == nil {
+		return
+	}
 	defaultLogger.Debug(msg, fields...)
 }
 
 func Info(msg string, fields ...zap.Field) {
+	if defaultLogger == nil {
+		return
+	}
 	defaultLogger.Info(msg, fields...)
 }
 
 func Warn(msg string, fields ...zap.Field) {
+	if defaultLogger == nil {
+		return
+	}
 	defaultLogger.Warn(msg, fields...)
 }
 
 func Error(msg string, fields ...zap.Field) {
+	if defaultLogger == nil {
+		return
+	}
 	defaultLogger.Error(msg, fields...)
 }
 
 func DPanic(msg string, fields ...zap.Field) {
+	if defaultLogger == nil {
+		return
+	}
 	defaultLogger.DPanic(msg, fields...)
 }
 
 func Panic(msg string, fields ...zap.Field) {
+	if defaultLogger == nil {
+		return
+	}
 	defaultLogger.Panic(msg, fields...)
 }
 
 func Fatal(msg string, fields ...zap.Field) {
+	if defaultLogger == nil {
+		return
+	}
 	defaultLogger.Fatal(msg, fields...)
 }

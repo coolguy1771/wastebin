@@ -233,36 +233,7 @@ func configureDBConnection(conn *gorm.DB) error {
 
 // ConfigureDBConnection sets the database connection pool settings with improved defaults.
 func ConfigureDBConnection(conn *gorm.DB) error {
-	sqlDB, err := conn.DB()
-	if err != nil {
-		log.Error("Failed to get DB from GORM connection", zap.Error(err))
-
-		return fmt.Errorf("gorm.DB().DB(): %w", err)
-	}
-
-	// Set connection pool settings with reasonable defaults
-	maxIdleConns := config.Conf.DBMaxIdleConns
-	if maxIdleConns <= 0 {
-		maxIdleConns = defaultMaxIdleConns // Reasonable default
-	}
-
-	maxOpenConns := config.Conf.DBMaxOpenConns
-	if maxOpenConns <= 0 {
-		maxOpenConns = defaultMaxOpenConns // Reasonable default
-	}
-
-	sqlDB.SetMaxIdleConns(maxIdleConns)
-	sqlDB.SetMaxOpenConns(maxOpenConns)
-	sqlDB.SetConnMaxLifetime(connMaxLifetime)
-	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
-
-	log.Info("Database connection pool configured",
-		zap.Int("max_idle_conns", maxIdleConns),
-		zap.Int("max_open_conns", maxOpenConns),
-		zap.Duration("conn_max_lifetime", connMaxLifetime),
-		zap.Duration("conn_max_idle_time", connMaxIdleTime))
-
-	return nil
+	return configureDBConnection(conn)
 }
 
 // Migrate performs automatic database schema migration.

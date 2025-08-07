@@ -539,11 +539,15 @@ func TestResponseTimeDistribution(t *testing.T) {
 
 // calculatePercentiles calculates percentiles from duration slice.
 func calculatePercentiles(durations []time.Duration) map[int]time.Duration {
+	// Make a copy to avoid modifying the original slice
+	sorted := make([]time.Duration, len(durations))
+	copy(sorted, durations)
+
 	// Simple bubble sort for small datasets
-	for i := 0; i < len(durations); i++ {
-		for j := range len(durations) - 1 - i {
-			if durations[j] > durations[j+1] {
-				durations[j], durations[j+1] = durations[j+1], durations[j]
+	for i := 0; i < len(sorted); i++ {
+		for j := range len(sorted) - 1 - i {
+			if sorted[j] > sorted[j+1] {
+				sorted[j], sorted[j+1] = sorted[j+1], sorted[j]
 			}
 		}
 	}
@@ -551,12 +555,11 @@ func calculatePercentiles(durations []time.Duration) map[int]time.Duration {
 	percentiles := make(map[int]time.Duration)
 
 	for _, p := range []int{50, 90, 95, 99} {
-		idx := (p * len(durations)) / 100
-		if idx >= len(durations) {
-			idx = len(durations) - 1
+		idx := (p * len(sorted)) / 100
+		if idx >= len(sorted) {
+			idx = len(sorted) - 1
 		}
-
-		percentiles[p] = durations[idx]
+		percentiles[p] = sorted[idx]
 	}
 
 	return percentiles

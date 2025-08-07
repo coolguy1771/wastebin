@@ -19,8 +19,8 @@ echo ""
 
 # Count test functions
 echo "Test Functions:"
-unit_funcs=$(grep -h "^func Test" $(find . -name "*_test.go" -not -name "*_integration_test.go" -not -path "./vendor/*" -not -path "./web/*" 2>/dev/null) 2>/dev/null | wc -l | tr -d ' ')
-integration_funcs=$(grep -h "^func Test" $(find . -name "*_integration_test.go" -not -path "./vendor/*" -not -path "./web/*" 2>/dev/null) 2>/dev/null | wc -l | tr -d ' ')
+unit_funcs=$(grep -h "^func Test" "$(find . -name "*_test.go" -not -name "*_integration_test.go" -not -path "./vendor/*" -not -path "./web/*" 2>/dev/null)" 2>/dev/null | wc -l | tr -d ' ')
+integration_funcs=$(grep -h "^func Test" "$(find . -name "*_integration_test.go" -not -path "./vendor/*" -not -path "./web/*" 2>/dev/null)" 2>/dev/null | wc -l | tr -d ' ')
 
 echo "  Unit test functions:        $unit_funcs"
 echo "  Integration test functions: $integration_funcs"
@@ -39,13 +39,13 @@ done
 
 echo ""
 echo "Integration Tests by Package:"
-for file in $(find . -name "*_integration_test.go" -not -path "./vendor/*" -not -path "./web/*"); do
-    pkg=$(dirname $file)
-    count=$(grep -c "^func Test" $file || echo 0)
+while IFS= read -r -d '' file; do
+    pkg=$(dirname "$file")
+    count=$(grep -c "^func Test" "$file" || echo 0)
     if [ "$count" -gt 0 ]; then
         echo "  $pkg: $count tests"
     fi
-done
+done < <(find . -name "*_integration_test.go" -not -path "./vendor/*" -not -path "./web/*" -print0)
 
 echo ""
 echo "To run specific test types:"
