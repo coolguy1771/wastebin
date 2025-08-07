@@ -2,25 +2,38 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"go.uber.org/zap"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/models"
 	"github.com/coolguy1771/wastebin/observability"
-	"go.uber.org/zap"
-	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
+// DBConn is the global GORM database connection. It is initialized by Connect/ConnectWithRetry.
+//
+//nolint:gochecknoglobals // This is the global database connection, which is a singleton.
 var DBConn *gorm.DB
+
+const (
+	defaultMaxIdleConns = 5
+	defaultMaxOpenConns = 25
+	connMaxLifetime     = 30 * time.Minute
+	connMaxIdleTime     = 10 * time.Minute
+	dbPingTimeout       = 5 * time.Second
+)
 
 // Connect initializes the database connection with retry logic.
 func Connect(obs *observability.Provider) error {
-	return ConnectWithRetry(3, obs)
+	const defaultRetryAttempts = 3
+	return ConnectWithRetry(defaultRetryAttempts, obs)
 }
 
 // ConnectWithRetry initializes the database connection with retry logic.
@@ -41,11 +54,16 @@ func ConnectWithRetry(maxRetries int, obs *observability.Provider) error {
 
 		if err == nil {
 			// Test the connection
-			if err = testConnection(conn); err == nil {
+			testErr := testConnection(conn)
+			if testErr == nil {
 				DBConn = conn
+
 				log.Info("Database connection established successfully", zap.Int("attempt", attempt))
+
 				return nil
 			}
+
+			err = testErr
 		}
 
 		log.Warn("Database connection failed",
@@ -68,57 +86,81 @@ func ConnectWithRetry(maxRetries int, obs *observability.Provider) error {
 func connectSQLite(obs *observability.Provider) (*gorm.DB, error) {
 	log.Info("Connecting to local SQLite database")
 
+	// Use Zap logger adapter for GORM
+	gormLogger := NewGormZapLogger(log.Default())
+
 	// Configure GORM
-	config := &gorm.Config{
-		Logger: logger.Default,
+	gormConfig := &gorm.Config{
+		Logger:                                   gormLogger,
+		SkipDefaultTransaction:                   false,
+		DisableAutomaticPing:                     false,
+		DisableForeignKeyConstraintWhenMigrating: false,
 	}
 
-	conn, err := gorm.Open(sqlite.Open("dev.db"), config)
+	conn, err := gorm.Open(sqlite.Open("dev.db"), gormConfig)
 	if err != nil {
 		log.Error("Error connecting to SQLite database", zap.Error(err))
-		return nil, err
+
+		return nil, fmt.Errorf("sqlite open: %w", err)
 	}
 
 	// Apply observability instrumentation after connection is established
 	if obs != nil {
-		conn = obs.InstrumentGorm(conn, config.Logger)
+		conn = obs.InstrumentGorm(conn, gormLogger)
 	}
 
 	log.Info("Connected to local SQLite database")
+
 	return conn, nil
 }
 
-// connectPostgres connects to a remote PostgreSQL database.
+// connectPostgres establishes a connection to a remote PostgreSQL database using configuration parameters and applies connection pool settings and optional observability instrumentation.
+// Returns the initialized GORM database connection or an error if the connection or configuration fails.
 func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 	log.Info("Connecting to remote PostgreSQL database",
 		zap.String("host", config.Conf.DBHost),
 		zap.Int("port", config.Conf.DBPort),
 		zap.String("name", config.Conf.DBName))
 
-	dsn := fmt.Sprintf("user=%s password=%s host=%s dbname=%s port=%d sslmode=disable",
-		config.Conf.DBUser, config.Conf.DBPassword, config.Conf.DBHost, config.Conf.DBName, config.Conf.DBPort)
+	// Determine SSL mode based on environment
+	sslMode := "prefer"
+	// if config.Conf.Dev {
+	// 	sslMode = "prefer" // More lenient for development
+	// }
+
+	dsn := fmt.Sprintf("user=%s password=%s host=%s dbname=%s port=%d sslmode=%s",
+		config.Conf.DBUser, config.Conf.DBPassword, config.Conf.DBHost, config.Conf.DBName, config.Conf.DBPort, sslMode)
+
+	// Use Zap logger adapter for GORM
+	gormLogger := NewGormZapLogger(log.Default())
 
 	// Configure GORM
 	gormConfig := &gorm.Config{
-		Logger: logger.Default,
+		Logger:                                   gormLogger,
+		SkipDefaultTransaction:                   false,
+		DisableAutomaticPing:                     false,
+		DisableForeignKeyConstraintWhenMigrating: false,
 	}
 
 	conn, err := gorm.Open(postgres.Open(dsn), gormConfig)
 	if err != nil {
 		log.Error("Error connecting to PostgreSQL database", zap.Error(err))
-		return nil, err
+
+		return nil, fmt.Errorf("postgres open: %w", err)
 	}
 
-	if err := configureDBConnection(conn); err != nil {
-		return nil, err
+	configErr := configureDBConnection(conn)
+	if configErr != nil {
+		return nil, fmt.Errorf("configure db connection: %w", configErr)
 	}
 
 	// Apply observability instrumentation after connection is established
 	if obs != nil {
-		conn = obs.InstrumentGorm(conn, gormConfig.Logger)
+		conn = obs.InstrumentGorm(conn, gormLogger)
 	}
 
 	log.Info("Connected to remote PostgreSQL database")
+
 	return conn, nil
 }
 
@@ -127,48 +169,59 @@ func configureDBConnection(conn *gorm.DB) error {
 	sqlDB, err := conn.DB()
 	if err != nil {
 		log.Error("Failed to get DB from GORM connection", zap.Error(err))
-		return err
+
+		return fmt.Errorf("gorm.DB().DB(): %w", err)
 	}
 
 	// Set connection pool settings with reasonable defaults
 	maxIdleConns := config.Conf.DBMaxIdleConns
 	if maxIdleConns <= 0 {
-		maxIdleConns = 5 // Reasonable default
+		maxIdleConns = defaultMaxIdleConns // Reasonable default
 	}
 
 	maxOpenConns := config.Conf.DBMaxOpenConns
 	if maxOpenConns <= 0 {
-		maxOpenConns = 25 // Reasonable default
+		maxOpenConns = defaultMaxOpenConns // Reasonable default
 	}
 
 	sqlDB.SetMaxIdleConns(maxIdleConns)
 	sqlDB.SetMaxOpenConns(maxOpenConns)
-	sqlDB.SetConnMaxLifetime(30 * time.Minute) // Reduced from 1 hour for better connection refresh
-	sqlDB.SetConnMaxIdleTime(10 * time.Minute) // Close idle connections after 10 minutes
+	sqlDB.SetConnMaxLifetime(connMaxLifetime)
+	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
 
 	log.Info("Database connection pool configured",
 		zap.Int("max_idle_conns", maxIdleConns),
 		zap.Int("max_open_conns", maxOpenConns),
-		zap.Duration("conn_max_lifetime", 30*time.Minute),
-		zap.Duration("conn_max_idle_time", 10*time.Minute))
+		zap.Duration("conn_max_lifetime", connMaxLifetime),
+		zap.Duration("conn_max_idle_time", connMaxIdleTime))
 
 	return nil
+}
+
+// ConfigureDBConnection sets the database connection pool settings with improved defaults.
+func ConfigureDBConnection(conn *gorm.DB) error {
+	return configureDBConnection(conn)
 }
 
 // Migrate performs automatic database schema migration.
 func Migrate() error {
 	log.Info("Starting database migration")
-	if err := DBConn.AutoMigrate(&models.Paste{}); err != nil {
+
+	err := DBConn.AutoMigrate(&models.Paste{})
+	if err != nil {
 		log.Error("Error migrating the database", zap.Error(err))
-		return err
+
+		return fmt.Errorf("auto migrate: %w", err)
 	}
+
 	log.Info("Database migration completed successfully")
+
 	return nil
 }
 
-// testConnection tests the database connection
+// testConnection tests the database connection.
 func testConnection(conn *gorm.DB) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), dbPingTimeout)
 	defer cancel()
 
 	sqlDB, err := conn.DB()
@@ -176,20 +229,21 @@ func testConnection(conn *gorm.DB) error {
 		return fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 
-	if err := sqlDB.PingContext(ctx); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+	pingErr := sqlDB.PingContext(ctx)
+	if pingErr != nil {
+		return fmt.Errorf("failed to ping database: %w", pingErr)
 	}
 
 	return nil
 }
 
-// HealthCheck performs a health check on the database connection
+// HealthCheck performs a health check on the database connection.
 func HealthCheck(ctx context.Context) error {
 	if DBConn == nil {
-		return fmt.Errorf("database connection is not initialized")
+		return errors.New("database connection is not initialized")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, dbPingTimeout)
 	defer cancel()
 
 	sqlDB, err := DBConn.DB()
@@ -197,14 +251,16 @@ func HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 
-	if err := sqlDB.PingContext(ctx); err != nil {
-		return fmt.Errorf("database health check failed: %w", err)
+	pingErr := sqlDB.PingContext(ctx)
+	if pingErr != nil {
+		return fmt.Errorf("database health check failed: %w", pingErr)
 	}
 
 	// Check if we can perform a simple query
 	var count int64
-	if err := DBConn.WithContext(ctx).Model(&models.Paste{}).Count(&count).Error; err != nil {
-		return fmt.Errorf("database query test failed: %w", err)
+	queryErr := DBConn.WithContext(ctx).Model(&models.Paste{}).Count(&count).Error
+	if queryErr != nil {
+		return fmt.Errorf("database query test failed: %w", queryErr)
 	}
 
 	return nil
@@ -214,6 +270,7 @@ func HealthCheck(ctx context.Context) error {
 func Close() error {
 	if DBConn == nil {
 		log.Info("Database connection is already nil, nothing to close")
+
 		return nil
 	}
 
@@ -222,25 +279,32 @@ func Close() error {
 	sqlDB, err := DBConn.DB()
 	if err != nil {
 		log.Error("Failed to get DB from GORM connection", zap.Error(err))
-		return err
+
+		return fmt.Errorf("gorm.DB().DB(): %w", err)
 	}
 
 	// Set a timeout for closing the connection
+	const connectionTimeout = 10 * time.Second
 	done := make(chan error, 1)
+
 	go func() {
 		done <- sqlDB.Close()
 	}()
 
 	select {
-	case err := <-done:
-		if err != nil {
-			log.Error("Error closing the database connection", zap.Error(err))
-			return err
+	case closeErr := <-done:
+		if closeErr != nil {
+			log.Error("Error closing the database connection", zap.Error(closeErr))
+
+			return closeErr
 		}
+
 		log.Info("Database connection closed successfully")
+
 		return nil
-	case <-time.After(10 * time.Second):
+	case <-time.After(connectionTimeout):
 		log.Warn("Database connection close timed out")
-		return fmt.Errorf("database connection close timed out")
+
+		return errors.New("database connection close timed out")
 	}
 }

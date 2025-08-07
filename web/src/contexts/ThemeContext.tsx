@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useEffect, useState, ReactNode, useContext } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { PaletteMode } from '@mui/material';
@@ -98,10 +98,7 @@ export const ThemeContextProvider: React.FC<ThemeContextProviderProps> = ({ chil
   );
 };
 
-/**
- * Hook to use theme context
- */
-export const useThemeMode = (): ThemeContextType => {
+export const useThemeMode = () => {
   const context = useContext(ThemeContext);
   if (!context) {
     throw new Error('useThemeMode must be used within a ThemeContextProvider');

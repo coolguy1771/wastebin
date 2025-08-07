@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderWithProviders, screen } from '@test/utils';
+import { renderWithProviders, screen } from '@test/components';
 import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from '../ErrorBoundary';
 

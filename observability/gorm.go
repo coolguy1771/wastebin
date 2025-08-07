@@ -9,13 +9,20 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// GormTracer implements gorm logger interface with OpenTelemetry tracing
+const (
+	// SQL operation detection constants.
+	sqlPrefixLength = 10
+	nanosecondsToMs = 1e6
+)
+
+// GormTracer implements gorm logger interface with OpenTelemetry tracing.
 type GormTracer struct {
 	logger.Interface
+
 	provider *Provider
 }
 
-// NewGormTracer creates a new GORM tracer
+// NewGormTracer creates a new GORM tracer.
 func NewGormTracer(provider *Provider, base logger.Interface) *GormTracer {
 	return &GormTracer{
 		Interface: base,
@@ -23,10 +30,15 @@ func NewGormTracer(provider *Provider, base logger.Interface) *GormTracer {
 	}
 }
 
-// Trace implements the gorm logger interface
-func (g *GormTracer) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
+// Trace implements the gorm logger interface.
+func (g *GormTracer) Trace(
+	ctx context.Context,
+	begin time.Time,
+	functionCallback func() (sql string, rowsAffected int64),
+	err error,
+) {
 	// Call the base logger first
-	g.Interface.Trace(ctx, begin, fc, err)
+	g.Interface.Trace(ctx, begin, functionCallback, err)
 
 	// Only trace if provider is available and enabled
 	if g.provider == nil || !g.provider.TracingProvider.config.Enabled {
@@ -34,7 +46,7 @@ func (g *GormTracer) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 	}
 
 	// Get SQL and rows affected
-	sql, rowsAffected := fc()
+	sql, rowsAffected := functionCallback()
 
 	// Determine operation type from SQL
 	operation := extractOperationType(sql)
@@ -52,7 +64,7 @@ func (g *GormTracer) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 		attribute.String("db.operation", operation),
 		attribute.String("db.statement", sql),
 		attribute.Int64("db.rows_affected", rowsAffected),
-		attribute.Float64("db.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Float64("db.duration_ms", float64(duration.Nanoseconds())/nanosecondsToMs),
 	)
 
 	// Record error if present
@@ -64,16 +76,16 @@ func (g *GormTracer) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 	g.provider.MetricsProvider.RecordDBQuery(ctx, operation, duration)
 }
 
-// extractOperationType extracts the operation type from SQL statement
+// extractOperationType extracts the operation type from SQL statement.
 func extractOperationType(sql string) string {
-	if len(sql) == 0 {
+	if sql == "" {
 		return "unknown"
 	}
 
 	// Convert to lowercase for comparison
 	sqlLower := sql
-	if len(sql) > 10 {
-		sqlLower = sql[:10]
+	if len(sql) > sqlPrefixLength {
+		sqlLower = sql[:sqlPrefixLength]
 	}
 
 	// Simple operation detection
@@ -97,37 +109,42 @@ func extractOperationType(sql string) string {
 	}
 }
 
-// contains checks if a string contains a substring (case-insensitive)
-func contains(s, substr string) bool {
+// contains checks if a string contains a substring (case-insensitive).
+func contains(str, substr string) bool {
 	// Simple case-insensitive contains check
-	if len(substr) > len(s) {
+	if len(substr) > len(str) {
 		return false
 	}
 
-	for i := 0; i <= len(s)-len(substr); i++ {
+	for i := 0; i <= len(str)-len(substr); i++ {
 		match := true
-		for j := 0; j < len(substr); j++ {
-			if toLower(s[i+j]) != toLower(substr[j]) {
+
+		for j := range len(substr) {
+			if toLower(str[i+j]) != toLower(substr[j]) {
 				match = false
+
 				break
 			}
 		}
+
 		if match {
 			return true
 		}
 	}
+
 	return false
 }
 
-// toLower converts a byte to lowercase
+// toLower converts a byte to lowercase.
 func toLower(b byte) byte {
 	if b >= 'A' && b <= 'Z' {
 		return b + ('a' - 'A')
 	}
+
 	return b
 }
 
-// InstrumentGorm adds observability to a GORM database instance
+// InstrumentGorm adds observability to a GORM database instance.
 func (p *Provider) InstrumentGorm(db *gorm.DB, baseLogger logger.Interface) *gorm.DB {
 	if !p.TracingProvider.config.Enabled && !p.MetricsProvider.config.Enabled {
 		return db

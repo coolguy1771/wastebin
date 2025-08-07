@@ -1,4 +1,4 @@
-package tests
+package tests_test
 
 import (
 	"fmt"
@@ -7,15 +7,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coolguy1771/wastebin/pkg/testutil"
-	"github.com/coolguy1771/wastebin/routes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/coolguy1771/wastebin/pkg/testutil"
+	"github.com/coolguy1771/wastebin/routes"
 )
 
-// TestSecurityHeaders verifies that required security headers are present
+// TestSecurityHeaders verifies that required security headers are present.
 func TestSecurityHeaders(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -36,9 +38,10 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 }
 
-// TestSQLInjectionProtection tests protection against SQL injection attacks
+// TestSQLInjectionProtection tests protection against SQL injection attacks.
 func TestSQLInjectionProtection(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -53,7 +56,7 @@ func TestSQLInjectionProtection(t *testing.T) {
 	}
 
 	for _, payload := range sqlInjectionPayloads {
-		t.Run("SQLInjection-"+payload[:min(len(payload), 20)], func(t *testing.T) {
+		t.Run("SQLInjection-"+payload[:minInt(len(payload), 20)], func(t *testing.T) {
 			// Test SQL injection in paste content
 			resp := server.MakeRequest(testutil.HTTPRequest{
 				Method: "POST",
@@ -85,9 +88,10 @@ func TestSQLInjectionProtection(t *testing.T) {
 	}
 }
 
-// TestXSSProtection tests protection against XSS attacks
+// TestXSSProtection tests protection against XSS attacks.
 func TestXSSProtection(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -102,7 +106,7 @@ func TestXSSProtection(t *testing.T) {
 	}
 
 	for _, payload := range xssPayloads {
-		t.Run("XSS-"+payload[:min(len(payload), 20)], func(t *testing.T) {
+		t.Run("XSS-"+payload[:minInt(len(payload), 20)], func(t *testing.T) {
 			// Create paste with XSS payload
 			resp := server.MakeRequest(testutil.HTTPRequest{
 				Method: "POST",
@@ -141,28 +145,34 @@ func TestXSSProtection(t *testing.T) {
 	}
 }
 
-// TestRateLimiting tests the rate limiting functionality
+// TestRateLimiting tests the rate limiting functionality.
 func TestRateLimiting(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
 	// Make rapid requests to trigger rate limiting
-	const numRequests = 50
-	const rapidInterval = 10 * time.Millisecond
+	const (
+		numRequests   = 50
+		rapidInterval = 10 * time.Millisecond
+	)
 
-	var rateLimitedCount int
-	var successCount int
+	var (
+		rateLimitedCount int
+		successCount     int
+	)
 
-	for i := 0; i < numRequests; i++ {
+	for range numRequests {
 		resp := server.MakeRequest(testutil.HTTPRequest{
 			Method: "GET",
 			Path:   "/api/v1/",
 		})
 
-		if resp.StatusCode == http.StatusTooManyRequests {
+		switch resp.StatusCode {
+		case http.StatusTooManyRequests:
 			rateLimitedCount++
-		} else if resp.StatusCode == http.StatusOK {
+		case http.StatusOK:
 			successCount++
 		}
 
@@ -170,7 +180,7 @@ func TestRateLimiting(t *testing.T) {
 	}
 
 	// Should have some successful requests and possibly some rate limited
-	assert.Greater(t, successCount, 0, "Should have some successful requests")
+	assert.Positive(t, successCount, "Should have some successful requests")
 
 	// If we're hitting rate limits, verify the response
 	if rateLimitedCount > 0 {
@@ -178,9 +188,10 @@ func TestRateLimiting(t *testing.T) {
 	}
 }
 
-// TestCSRFProtection tests CSRF protection measures
+// TestCSRFProtection tests CSRF protection measures.
 func TestCSRFProtection(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -217,9 +228,10 @@ func TestCSRFProtection(t *testing.T) {
 	}
 }
 
-// TestInputValidation tests comprehensive input validation
+// TestInputValidation tests comprehensive input validation.
 func TestInputValidation(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -321,9 +333,10 @@ func TestInputValidation(t *testing.T) {
 	}
 }
 
-// TestAuthenticationBypass tests that no authentication bypass is possible
+// TestAuthenticationBypass tests that no authentication bypass is possible.
 func TestAuthenticationBypass(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -354,9 +367,10 @@ func TestAuthenticationBypass(t *testing.T) {
 	}
 }
 
-// TestDirectoryTraversal tests protection against directory traversal attacks
+// TestDirectoryTraversal tests protection against directory traversal attacks.
 func TestDirectoryTraversal(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -370,7 +384,7 @@ func TestDirectoryTraversal(t *testing.T) {
 	}
 
 	for _, payload := range traversalPayloads {
-		t.Run("DirectoryTraversal-"+payload[:min(len(payload), 20)], func(t *testing.T) {
+		t.Run("DirectoryTraversal-"+payload[:minInt(len(payload), 20)], func(t *testing.T) {
 			resp := server.MakeRequest(testutil.HTTPRequest{
 				Method: "GET",
 				Path:   "/api/v1/paste/" + payload,
@@ -383,9 +397,10 @@ func TestDirectoryTraversal(t *testing.T) {
 	}
 }
 
-// TestHTTPMethodSecurity tests that only allowed HTTP methods work
+// TestHTTPMethodSecurity tests that only allowed HTTP methods work.
 func TestHTTPMethodSecurity(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -403,9 +418,10 @@ func TestHTTPMethodSecurity(t *testing.T) {
 	}
 }
 
-// TestInformationDisclosure tests that no sensitive information is leaked
+// TestInformationDisclosure tests that no sensitive information is leaked.
 func TestInformationDisclosure(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -435,10 +451,11 @@ func TestInformationDisclosure(t *testing.T) {
 	}
 }
 
-// Helper function for min
-func min(a, b int) int {
+// Helper function for min.
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }

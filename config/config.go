@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -12,8 +11,34 @@ import (
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/zap"
+
+	"github.com/coolguy1771/wastebin/log"
 )
 
+// Configuration constants.
+const (
+	// Database configuration constants.
+	DefaultDBMaxIdleConns = 10
+	DefaultDBMaxOpenConns = 50
+	DefaultDBPort         = 5432
+	MaxPortNumber         = 65535
+	MinPortNumber         = 1
+
+	// Request size constants.
+	DefaultMaxRequestSize = 15728640          // 15MB
+	MinRequestSize        = 1024 * 1024       // 1MB
+	MaxRequestSize        = 100 * 1024 * 1024 // 100MB
+
+	// Metrics interval constants.
+	DefaultMetricsInterval = 30 // seconds
+
+	// Webapp port constants.
+	DefaultWebappPort = "3000"
+)
+
+// Conf holds the global configuration instance.
+//
+//nolint:gochecknoglobals // Conf is a singleton that holds the application's configuration.
 var Conf Config
 
 // Config represents the overall configuration for the application.
@@ -32,6 +57,19 @@ type Config struct {
 	Dev        bool   `koanf:"DEV"`
 	LocalDB    bool   `koanf:"LOCAL_DB"`
 
+	// TLS configuration
+	TLSEnabled  bool   `koanf:"TLS_ENABLED"`
+	TLSCertFile string `koanf:"TLS_CERT_FILE"`
+	TLSKeyFile  string `koanf:"TLS_KEY_FILE"`
+
+	// Security configuration
+	AllowedOrigins string `koanf:"ALLOWED_ORIGINS"`
+	RequireAuth    bool   `koanf:"REQUIRE_AUTH"`
+	AuthUsername   string `koanf:"AUTH_USERNAME"`
+	AuthPassword   string `koanf:"AUTH_PASSWORD"`
+	CSRFKey        string `koanf:"CSRF_KEY"`
+	MaxRequestSize int64  `koanf:"MAX_REQUEST_SIZE"`
+
 	// Logger configuration
 	LogLevel string `koanf:"LOG_LEVEL"`
 
@@ -46,21 +84,33 @@ type Config struct {
 	MetricsInterval     int    `koanf:"METRICS_INTERVAL"` // in seconds
 }
 
-// Load initializes the configuration by loading defaults and environment variables.
+// Load initializes the application configuration by merging default values with
+// environment variables, unmarshaling them into the global Config, validating
+// the result, and returning a pointer to the loaded configuration.
+// The application terminates if loading or validation fails.
 func Load() *Config {
-	k := koanf.New(".")
+	koanfInstance := koanf.New(".")
 
 	// Load default configuration settings
-	k.Load(confmap.Provider(map[string]interface{}{
-		"WEBAPP_PORT":           "3000",
-		"DB_MAX_IDLE_CONNS":     10,
-		"DB_MAX_OPEN_CONNS":     50,
-		"DB_PORT":               5432,
+	err := koanfInstance.Load(confmap.Provider(map[string]interface{}{
+		"WEBAPP_PORT":           DefaultWebappPort,
+		"DB_MAX_IDLE_CONNS":     DefaultDBMaxIdleConns,
+		"DB_MAX_OPEN_CONNS":     DefaultDBMaxOpenConns,
+		"DB_PORT":               DefaultDBPort,
 		"DB_HOST":               "localhost",
 		"DB_USER":               "wastebin",
 		"DB_NAME":               "wastebin",
 		"LOG_LEVEL":             "INFO",
 		"LOCAL_DB":              false,
+		"TLS_ENABLED":           false,
+		"TLS_CERT_FILE":         "",
+		"TLS_KEY_FILE":          "",
+		"ALLOWED_ORIGINS":       "",
+		"REQUIRE_AUTH":          false,
+		"AUTH_USERNAME":         "",
+		"AUTH_PASSWORD":         "",
+		"CSRF_KEY":              "",
+		"MAX_REQUEST_SIZE":      DefaultMaxRequestSize,
 		"TRACING_ENABLED":       true,
 		"METRICS_ENABLED":       true,
 		"SERVICE_NAME":          "wastebin",
@@ -68,81 +118,85 @@ func Load() *Config {
 		"ENVIRONMENT":           "development",
 		"OTLP_TRACE_ENDPOINT":   "localhost:4318",
 		"OTLP_METRICS_ENDPOINT": "localhost:4318",
-		"METRICS_INTERVAL":      30,
+		"METRICS_INTERVAL":      DefaultMetricsInterval,
 	}, "."), nil)
+	if err != nil {
+		log.Error("Error loading default config", zap.Error(err))
+	}
 
 	// Load environment variables with prefix WASTEBIN_
-	k.Load(env.Provider("WASTEBIN_", ".", func(s string) string {
+	err = koanfInstance.Load(env.Provider("WASTEBIN_", ".", func(s string) string {
 		return strings.TrimPrefix(s, "WASTEBIN_")
 	}), nil)
+	if err != nil {
+		log.Error("Error loading environment config", zap.Error(err))
+	}
 
 	// Unmarshal the configuration into the Config struct
-	if err := k.Unmarshal("", &Conf); err != nil {
-		log.Fatal("Error loading config", zap.Error(err))
+	err = koanfInstance.Unmarshal("", &Conf)
+	if err != nil {
+		log.Error("Error loading config", zap.Error(err))
+	}
+
+	// If Dev mode is true, automatically use LocalDB
+	if Conf.Dev {
+		Conf.LocalDB = true
+		log.Info("Development mode enabled, using local SQLite database")
 	}
 
 	// Validate the configuration
-	if err := Conf.Validate(); err != nil {
-		log.Fatal("Configuration validation failed", zap.Error(err))
+	err = Conf.Validate()
+	if err != nil {
+		log.Error("Configuration validation failed", zap.Error(err))
 	}
 
 	return &Conf
 }
 
-// Validate validates the configuration settings
+// Validate validates the configuration settings.
 func (c *Config) Validate() error {
 	var errs []string
 
 	// Validate webapp port
-	if c.WebappPort == "" {
-		errs = append(errs, "webapp port must be specified")
-	} else {
-		if port, err := strconv.Atoi(c.WebappPort); err != nil || port < 1 || port > 65535 {
-			errs = append(errs, "webapp port must be a valid port number (1-65535)")
-		}
+	err := c.validateWebappPort()
+	if err != nil {
+		errs = append(errs, err.Error())
 	}
 
-	// Validate database configuration for PostgreSQL
-	if !c.LocalDB {
-		if c.DBHost == "" {
-			errs = append(errs, "database host is required when not using local DB")
-		}
-		if c.DBUser == "" {
-			errs = append(errs, "database user is required when not using local DB")
-		}
-		if c.DBPassword == "" {
-			errs = append(errs, "database password is required when not using local DB")
-		}
-		if c.DBName == "" {
-			errs = append(errs, "database name is required when not using local DB")
-		}
-		if c.DBPort <= 0 || c.DBPort > 65535 {
-			errs = append(errs, "database port must be between 1 and 65535")
-		}
+	// Validate database configuration
+	err = c.validateDatabaseConfig()
+	if err != nil {
+		errs = append(errs, err.Error())
 	}
 
 	// Validate connection pool settings
-	if c.DBMaxIdleConns < 0 {
-		errs = append(errs, "database max idle connections cannot be negative")
-	}
-	if c.DBMaxOpenConns < 0 {
-		errs = append(errs, "database max open connections cannot be negative")
-	}
-	if c.DBMaxIdleConns > c.DBMaxOpenConns && c.DBMaxOpenConns > 0 {
-		errs = append(errs, "database max idle connections cannot exceed max open connections")
+	err = c.validateConnectionPool()
+	if err != nil {
+		errs = append(errs, err.Error())
 	}
 
 	// Validate log level
-	validLogLevels := []string{"DEBUG", "INFO", "WARN", "ERROR", "FATAL"}
-	validLevel := false
-	for _, level := range validLogLevels {
-		if strings.ToUpper(c.LogLevel) == level {
-			validLevel = true
-			break
-		}
+	err = c.validateLogLevel()
+	if err != nil {
+		errs = append(errs, err.Error())
 	}
-	if !validLevel {
-		errs = append(errs, fmt.Sprintf("log level must be one of: %v", validLogLevels))
+
+	// Validate TLS configuration
+	err = c.validateTLSConfig()
+	if err != nil {
+		errs = append(errs, err.Error())
+	}
+
+	// Validate authentication configuration
+	err = c.validateAuthConfig()
+	if err != nil {
+		errs = append(errs, err.Error())
+	}
+
+	// Validate request size limits
+	err = c.validateRequestSize()
+	if err != nil {
+		errs = append(errs, err.Error())
 	}
 
 	if len(errs) > 0 {
@@ -152,14 +206,148 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// GetObservabilityConfig returns observability configuration values
-func (c *Config) GetObservabilityConfig() (tracingEnabled, metricsEnabled bool, serviceName, version, environment, traceEndpoint, metricsEndpoint string, interval time.Duration) {
-	return c.TracingEnabled,
-		c.MetricsEnabled,
-		c.ServiceName,
-		c.ServiceVersion,
-		c.Environment,
-		c.OTLPTraceEndpoint,
-		c.OTLPMetricsEndpoint,
-		time.Duration(c.MetricsInterval) * time.Second
+// validateWebappPort validates the webapp port configuration.
+func (c *Config) validateWebappPort() error {
+	if c.WebappPort == "" {
+		return errors.New("webapp port must be specified")
+	}
+
+	port, err := strconv.Atoi(c.WebappPort)
+	if err != nil || port < MinPortNumber || port > MaxPortNumber {
+		return errors.New("webapp port must be a valid port number (1-65535)")
+	}
+
+	return nil
+}
+
+// validateDatabaseConfig validates the database configuration.
+func (c *Config) validateDatabaseConfig() error {
+	if c.LocalDB {
+		return nil // Skip validation for local DB
+	}
+
+	if c.DBHost == "" {
+		return errors.New("database host is required when not using local DB")
+	}
+
+	if c.DBUser == "" {
+		return errors.New("database user is required when not using local DB")
+	}
+
+	if c.DBPassword == "" {
+		return errors.New("database password is required when not using local DB")
+	}
+
+	if c.DBName == "" {
+		return errors.New("database name is required when not using local DB")
+	}
+
+	if c.DBPort <= 0 || c.DBPort > MaxPortNumber {
+		return errors.New("database port must be between 1 and 65535")
+	}
+
+	return nil
+}
+
+// validateConnectionPool validates the connection pool settings.
+func (c *Config) validateConnectionPool() error {
+	if c.DBMaxIdleConns < 0 {
+		return errors.New("database max idle connections cannot be negative")
+	}
+
+	if c.DBMaxOpenConns < 0 {
+		return errors.New("database max open connections cannot be negative")
+	}
+
+	if c.DBMaxIdleConns > c.DBMaxOpenConns && c.DBMaxOpenConns > 0 {
+		return errors.New("database max idle connections cannot exceed max open connections")
+	}
+
+	return nil
+}
+
+// validateLogLevel validates the log level configuration.
+func (c *Config) validateLogLevel() error {
+	validLogLevels := []string{"DEBUG", "INFO", "WARN", "ERROR", "FATAL"}
+
+	for _, level := range validLogLevels {
+		if strings.EqualFold(c.LogLevel, level) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("log level must be one of: %v", validLogLevels)
+}
+
+// validateTLSConfig validates the TLS configuration.
+func (c *Config) validateTLSConfig() error {
+	if !c.TLSEnabled {
+		return nil
+	}
+
+	if c.TLSCertFile == "" {
+		return errors.New("TLS certificate file is required when TLS is enabled")
+	}
+
+	if c.TLSKeyFile == "" {
+		return errors.New("TLS key file is required when TLS is enabled")
+	}
+
+	return nil
+}
+
+// validateAuthConfig validates the authentication configuration.
+func (c *Config) validateAuthConfig() error {
+	if !c.RequireAuth {
+		return nil
+	}
+
+	if c.AuthUsername == "" {
+		return errors.New("auth username is required when authentication is enabled")
+	}
+
+	if c.AuthPassword == "" {
+		return errors.New("auth password is required when authentication is enabled")
+	}
+
+	return nil
+}
+
+// validateRequestSize validates the request size limits.
+func (c *Config) validateRequestSize() error {
+	if c.MaxRequestSize < MinRequestSize {
+		return errors.New("max request size must be at least 1MB")
+	}
+
+	if c.MaxRequestSize > MaxRequestSize {
+		return errors.New("max request size cannot exceed 100MB")
+	}
+
+	return nil
+}
+
+// ObservabilityConfig holds observability configuration values.
+type ObservabilityConfig struct {
+	TracingEnabled  bool
+	MetricsEnabled  bool
+	ServiceName     string
+	Version         string
+	Environment     string
+	TraceEndpoint   string
+	MetricsEndpoint string
+	Interval        time.Duration
+}
+
+// GetObservabilityConfig returns observability configuration values.
+func (c *Config) GetObservabilityConfig() ObservabilityConfig {
+	return ObservabilityConfig{
+		TracingEnabled:  c.TracingEnabled,
+		MetricsEnabled:  c.MetricsEnabled,
+		ServiceName:     c.ServiceName,
+		Version:         c.ServiceVersion,
+		Environment:     c.Environment,
+		TraceEndpoint:   c.OTLPTraceEndpoint,
+		MetricsEndpoint: c.OTLPMetricsEndpoint,
+		Interval:        time.Duration(c.MetricsInterval) * time.Second,
+	}
 }

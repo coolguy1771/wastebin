@@ -8,13 +8,25 @@ import (
 	"go.uber.org/zap"
 )
 
-// Config holds all observability configuration
+const (
+	// Shutdown timeout constants.
+	shutdownTimeout = 10 * time.Second
+	initTimeout     = 5 * time.Second
+
+	// Metrics update interval.
+	metricsUpdateInterval = 30 * time.Second
+
+	// Default configuration values.
+	defaultMetricsInterval = 15 * time.Second
+)
+
+// Config holds all observability configuration.
 type Config struct {
 	Tracing TracingConfig
 	Metrics MetricsConfig
 }
 
-// Provider manages all observability components
+// Provider manages all observability components.
 type Provider struct {
 	TracingProvider *TracingProvider
 	MetricsProvider *MetricsProvider
@@ -22,8 +34,8 @@ type Provider struct {
 	startTime       time.Time
 }
 
-// New creates a new observability provider with the given configuration
-func New(config Config, logger *zap.Logger) (*Provider, error) {
+// New creates a new observability provider with the given configuration.
+func New(config *Config, logger *zap.Logger) (*Provider, error) {
 	// Initialize tracing
 	tracingProvider, err := NewTracingProvider(config.Tracing)
 	if err != nil {
@@ -39,9 +51,14 @@ func New(config Config, logger *zap.Logger) (*Provider, error) {
 	)
 	if err != nil {
 		// Cleanup tracing if metrics fail
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), initTimeout)
 		defer cancel()
-		tracingProvider.Shutdown(ctx)
+
+		shutdownErr := tracingProvider.Shutdown(ctx)
+		if shutdownErr != nil {
+			logger.Error("Failed to shutdown tracing provider during cleanup", zap.Error(shutdownErr))
+		}
+
 		return nil, fmt.Errorf("failed to initialize metrics: %w", err)
 	}
 
@@ -66,32 +83,36 @@ func New(config Config, logger *zap.Logger) (*Provider, error) {
 	return provider, nil
 }
 
-// Shutdown gracefully shuts down all observability components
+// Shutdown gracefully shuts down all observability components.
 func (p *Provider) Shutdown(ctx context.Context) error {
 	p.logger.Info("Shutting down observability")
 
 	// Create a context with timeout for shutdown
-	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
 	// Shutdown metrics first
-	if err := p.MetricsProvider.Shutdown(shutdownCtx); err != nil {
+	err := p.MetricsProvider.Shutdown(shutdownCtx)
+	if err != nil {
 		p.logger.Error("Failed to shutdown metrics provider", zap.Error(err))
 	}
 
 	// Shutdown tracing
-	if err := p.TracingProvider.Shutdown(shutdownCtx); err != nil {
+	err = p.TracingProvider.Shutdown(shutdownCtx)
+	if err != nil {
 		p.logger.Error("Failed to shutdown tracing provider", zap.Error(err))
-		return err
+
+		return fmt.Errorf("failed to shutdown observability: %w", err)
 	}
 
 	p.logger.Info("Observability shutdown completed")
+
 	return nil
 }
 
-// updateSystemMetrics runs in a background goroutine to update system-level metrics
+// updateSystemMetrics runs in a background goroutine to update system-level metrics.
 func (p *Provider) updateSystemMetrics() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(metricsUpdateInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -101,7 +122,7 @@ func (p *Provider) updateSystemMetrics() {
 	}
 }
 
-// DefaultConfig returns a default observability configuration
+// DefaultConfig returns a default observability configuration.
 func DefaultConfig() Config {
 	return Config{
 		Tracing: TracingConfig{
@@ -116,7 +137,7 @@ func DefaultConfig() Config {
 			Enabled:  true,
 			Endpoint: "http://localhost:4318/v1/metrics",
 			Headers:  make(map[string]string),
-			Interval: 15 * time.Second,
+			Interval: defaultMetricsInterval,
 		},
 	}
 }

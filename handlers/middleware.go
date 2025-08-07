@@ -1,129 +1,398 @@
 package handlers
 
 import (
-	"bufio"
-	"net"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/coolguy1771/wastebin/log"
-	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
+
+	"github.com/coolguy1771/wastebin/config"
+	"github.com/coolguy1771/wastebin/log"
 )
 
-// WrapResponseWriter wraps the standard http.ResponseWriter to capture status and size.
-type WrapResponseWriter struct {
-	http.ResponseWriter
-	status      int
-	bytes       int
-	wroteHeader bool
+// CSRFProtectionMiddleware enforces CSRF protection on state-changing HTTP requests using the double-submit cookie pattern.
+//
+// This middleware validates CSRF tokens for non-GET/HEAD/OPTIONS requests, except for API endpoints authenticated via API key or Authorization header. It retrieves or creates a session ID cookie, extracts the CSRF token from the request, and verifies it using HMAC with a configured secret key. Requests failing validation receive a 403 Forbidden response.
+func CSRFProtectionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip CSRF protection for GET, HEAD, OPTIONS requests
+		if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+
+			return
+		}
+
+		// Skip CSRF protection for API endpoints only if using API key authentication
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			// Check if request uses API key authentication
+			if r.Header.Get("X-Api-Key") != "" || r.Header.Get("Authorization") != "" {
+				next.ServeHTTP(w, r)
+
+				return
+			}
+			// For cookie-based API auth, continue with CSRF validation
+		}
+
+		// Generate and validate CSRF token for web forms using double-submit cookie pattern
+		if config.Conf.CSRFKey != "" {
+			// Get token from header or form
+			token := r.Header.Get("X-Csrf-Token")
+			if token == "" {
+				token = r.FormValue("csrf_token")
+			}
+
+			// Get session ID from cookie or generate one
+			sessionID, err := getOrCreateSessionID(w, r)
+			if err != nil {
+				log.Error("Failed to get or create session ID for CSRF validation", zap.Error(err))
+				respondWithError(w, http.StatusInternalServerError, "Session management failure")
+
+				return
+			}
+
+			if !validateCSRFToken(token, sessionID, config.Conf.CSRFKey) {
+				log.Warn("CSRF validation failed",
+					zap.String("remote_addr", r.RemoteAddr),
+					zap.String("user_agent", r.UserAgent()),
+					zap.String("path", r.URL.Path),
+					zap.String("session_id", sessionID))
+				respondWithError(w, http.StatusForbidden, "CSRF validation failed")
+
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
-// NewWrapResponseWriter creates a new instance of WrapResponseWriter.
-func NewWrapResponseWriter(w http.ResponseWriter, protoMajor int) *WrapResponseWriter {
-	return &WrapResponseWriter{ResponseWriter: w, status: 200}
-}
+const (
+	// defaultMaxRequestSize is the default maximum request size (10MB).
+	defaultMaxRequestSize = 10 * 1024 * 1024
+)
 
-// Status returns the response status code.
-func (ww *WrapResponseWriter) Status() int {
-	return ww.status
-}
-
-// BytesWritten returns the number of bytes written in the response.
-func (ww *WrapResponseWriter) BytesWritten() int {
-	return ww.bytes
-}
-
-// WriteHeader overrides the default WriteHeader to capture the status code.
-func (ww *WrapResponseWriter) WriteHeader(code int) {
-	if ww.wroteHeader {
-		return
-	}
-	ww.status = code
-	ww.ResponseWriter.WriteHeader(code)
-	ww.wroteHeader = true
-}
-
-// Write overrides the default Write to capture the size of the response.
-func (ww *WrapResponseWriter) Write(b []byte) (int, error) {
-	if !ww.wroteHeader {
-		ww.WriteHeader(http.StatusOK)
-	}
-	size, err := ww.ResponseWriter.Write(b)
-	ww.bytes += size
-	return size, err
-}
-
-// Hijack allows the middleware to support hijacking.
-func (ww *WrapResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hj, ok := ww.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return nil, nil, http.ErrNotSupported
-	}
-	return hj.Hijack()
-}
-
-// Flush allows the middleware to support flushing.
-func (ww *WrapResponseWriter) Flush() {
-	fl, ok := ww.ResponseWriter.(http.Flusher)
-	if ok {
-		fl.Flush()
-	}
-}
-
-// ZapLogger is a middleware that logs HTTP requests using zap.Logger in JSON format.
-func ZapLogger(logger *log.Logger) func(next http.Handler) http.Handler {
+// RequestSizeLimitMiddleware returns middleware that limits the size of incoming HTTP request bodies to the specified maximum number of bytes.
+// If a request exceeds the limit, the server responds with HTTP 413 Request Entity Too Large.
+func RequestSizeLimitMiddleware(maxSize int64) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			// Get request ID from middleware (chi.RequestID middleware adds this)
-			requestID := GetRequestID(r)
-
-			// Create a response writer to capture response status and size
-			ww := NewWrapResponseWriter(w, r.ProtoMajor)
-
-			// Add request ID to response headers for traceability
-			if requestID != "" {
-				ww.Header().Set("X-Request-ID", requestID)
+			// If maxSize is 0 or negative, use a default
+			if maxSize <= 0 {
+				maxSize = defaultMaxRequestSize // Default to 10MB
 			}
-
-			// Call the next handler
-			next.ServeHTTP(ww, r)
-
-			// Log the request details with structured logging
-			fields := []zap.Field{
-				zap.String("request_id", requestID),
-				zap.String("method", r.Method),
-				zap.String("url", r.URL.String()),
-				zap.String("protocol", r.Proto),
-				zap.String("remote_addr", r.RemoteAddr),
-				zap.String("user_agent", r.UserAgent()),
-				zap.Int("status_code", ww.Status()),
-				zap.Int("response_size", ww.BytesWritten()),
-				zap.Duration("duration", time.Since(start)),
-				zap.String("timestamp", start.UTC().Format(time.RFC3339)),
-			}
-
-			// Add referer if present
-			if referer := r.Referer(); referer != "" {
-				fields = append(fields, zap.String("referer", referer))
-			}
-
-			// Log based on status code
-			if ww.Status() >= 500 {
-				logger.Error("Request handled with server error", fields...)
-			} else if ww.Status() >= 400 {
-				logger.Warn("Request handled with client error", fields...)
-			} else {
-				logger.Info("Request handled successfully", fields...)
-			}
+			// Wrap the request body with a limited reader
+			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-// GetRequestID extracts the request ID from the context using chi's middleware
-func GetRequestID(r *http.Request) string {
-	// Use chi's built-in request ID getter
-	return middleware.GetReqID(r.Context())
+// SecurityHeadersMiddleware adds HTTP headers to each response to enforce security best practices, including protections against MIME sniffing, clickjacking, cross-site scripting, and improper referrer or permissions usage. It also sets a strict Content Security Policy and enables HSTS for HTTPS requests.
+func SecurityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+
+		// HSTS header for HTTPS
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+
+		// Content Security Policy
+		csp := "default-src 'self'; " +
+			"script-src 'self' 'unsafe-inline'; " +
+			"style-src 'self' 'unsafe-inline'; " +
+			"img-src 'self' data:; " +
+			"connect-src 'self'; " +
+			"font-src 'self'; " +
+			"frame-ancestors 'none'"
+		w.Header().Set("Content-Security-Policy", csp)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// BasicAuthMiddleware enforces HTTP Basic Authentication if enabled in configuration.
+// If authentication is required, it validates credentials using constant-time comparison and rejects unauthorized requests with a 401 response and a WWW-Authenticate header.
+// Logs authentication attempts and passes control to the next handler on successful authentication or if authentication is not required.
+func BasicAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !config.Conf.RequireAuth {
+			next.ServeHTTP(w, r)
+
+			return
+		}
+
+		username, password, ok := r.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Wastebin"`)
+			respondWithError(w, http.StatusUnauthorized, "Authentication required")
+
+			return
+		}
+
+		// Constant-time comparison to prevent timing attacks
+		usernameMatch := subtle.ConstantTimeCompare([]byte(username), []byte(config.Conf.AuthUsername))
+		passwordMatch := subtle.ConstantTimeCompare([]byte(password), []byte(config.Conf.AuthPassword))
+
+		if usernameMatch != 1 || passwordMatch != 1 {
+			log.Warn("Authentication failed",
+				zap.String("username", username),
+				zap.String("remote_addr", r.RemoteAddr),
+				zap.String("user_agent", r.UserAgent()))
+			w.Header().Set("WWW-Authenticate", `Basic realm="Wastebin"`)
+			respondWithError(w, http.StatusUnauthorized, "Invalid credentials")
+
+			return
+		}
+
+		log.Info("User authenticated",
+			zap.String("username", username),
+			zap.String("remote_addr", r.RemoteAddr))
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// SecurityAuditMiddleware logs security-related HTTP events such as rate limiting, unauthorized, and forbidden access attempts after the response is sent. It captures the response status code and logs relevant request metadata for auditing purposes.
+func SecurityAuditMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Wrap response writer to capture status code
+		ww := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(ww, r)
+
+		// Log security events
+		switch ww.statusCode {
+		case http.StatusTooManyRequests:
+			log.Warn("Rate limit exceeded",
+				zap.String("ip", getRealIP(r)),
+				zap.String("user_agent", r.UserAgent()),
+				zap.String("path", r.URL.Path),
+				zap.String("method", r.Method))
+		case http.StatusUnauthorized:
+			log.Warn("Unauthorized access attempt",
+				zap.String("ip", getRealIP(r)),
+				zap.String("user_agent", r.UserAgent()),
+				zap.String("path", r.URL.Path),
+				zap.String("method", r.Method))
+		case http.StatusForbidden:
+			log.Warn("Forbidden access attempt",
+				zap.String("ip", getRealIP(r)),
+				zap.String("user_agent", r.UserAgent()),
+				zap.String("path", r.URL.Path),
+				zap.String("method", r.Method))
+		}
+	})
+}
+
+// Helper functions
+
+// responseWriter wraps http.ResponseWriter to capture the status code for auditing.
+type responseWriter struct {
+	http.ResponseWriter
+
+	statusCode int
+}
+
+// WriteHeader sets the HTTP status code and calls the underlying ResponseWriter's WriteHeader.
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.statusCode = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
+}
+
+// getRealIP extracts the client's real IP address from the HTTP request headers or falls back to the remote address.
+// It checks the X-Forwarded-For and X-Real-IP headers, returning the first valid IP found, or the RemoteAddr if none are set.
+func getRealIP(req *http.Request) string {
+	// Check X-Forwarded-For header first
+	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
+		// Get the first IP in case of multiple
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+
+		return strings.TrimSpace(xff)
+	}
+
+	// Check X-Real-IP header
+	if xri := req.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+
+	// Fall back to RemoteAddr
+	return req.RemoteAddr
+}
+
+const (
+	csrfTokenTTL        = 24 * time.Hour // Token expires after 24 hours
+	sessionCookieName   = "wastebin_session"
+	csrfCookieName      = "wastebin_csrf"
+	sessionIDByteLength = 32
+)
+
+// getOrCreateSessionID retrieves the session ID from the session cookie or generates and sets a new secure session ID cookie if none exists.
+// Returns the session ID string, or an error if session ID generation fails.
+func getOrCreateSessionID(w http.ResponseWriter, req *http.Request) (string, error) {
+	// Try to get existing session ID from cookie
+	cookie, err := req.Cookie(sessionCookieName)
+	if err == nil {
+		if cookie.Value != "" {
+			return cookie.Value, nil
+		}
+	}
+
+	// Generate new session ID
+	sessionID, err := generateSecureRandomString(sessionIDByteLength)
+	if err != nil {
+		log.Error("Failed to generate secure session ID", zap.Error(err))
+
+		return "", fmt.Errorf("failed to generate session ID: %w", err)
+	}
+
+	// Set session cookie (HttpOnly, Secure in production, SameSite)
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    sessionID,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   !config.Conf.Dev, // Only require HTTPS in production
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(csrfTokenTTL.Seconds()),
+	})
+
+	return sessionID, nil
+}
+
+// generateSecureRandomString returns a cryptographically secure random string of the specified byte length, hex-encoded.
+// Returns an error if random data generation fails.
+func generateSecureRandomString(length int) (string, error) {
+	bytes := make([]byte, length)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		// Fail securely - do not use predictable fallbacks
+		return "", fmt.Errorf("failed to generate secure random string: %w", err)
+	}
+
+	return hex.EncodeToString(bytes), nil
+}
+
+// generateCSRFToken returns a base64-encoded CSRF token containing the session ID, current timestamp, and an HMAC-SHA256 signature using the provided secret key.
+func generateCSRFToken(sessionID, secretKey string) string {
+	timestamp := time.Now().Unix()
+	message := fmt.Sprintf("%s:%d", sessionID, timestamp)
+
+	// Create HMAC with SHA256
+	h := hmac.New(sha256.New, []byte(secretKey))
+	h.Write([]byte(message))
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	// Format: sessionID:timestamp:signature
+	token := fmt.Sprintf("%s:%d:%s", sessionID, timestamp, signature)
+
+	return base64.StdEncoding.EncodeToString([]byte(token))
+}
+
+// validateCSRFToken verifies the validity of a CSRF token by checking its format, matching the session ID, ensuring it is not expired, and confirming the HMAC signature using the provided secret key.
+// Returns true if the token is valid and unexpired; false otherwise.
+func validateCSRFToken(tokenStr, sessionID, secretKey string) bool {
+	if tokenStr == "" || sessionID == "" || secretKey == "" {
+		return false
+	}
+
+	// Decode base64 token
+	tokenBytes, err := base64.StdEncoding.DecodeString(tokenStr)
+	if err != nil {
+		log.Warn("Invalid base64 CSRF token", zap.Error(err))
+
+		return false
+	}
+
+	token := string(tokenBytes)
+
+	parts := strings.Split(token, ":")
+	const expectedAuthParts = 3
+	if len(parts) != expectedAuthParts {
+		log.Warn("Invalid CSRF token format")
+
+		return false
+	}
+
+	tokenSessionID := parts[0]
+	timestampStr := parts[1]
+	providedSignature := parts[2]
+
+	// Verify session ID matches
+	if subtle.ConstantTimeCompare([]byte(tokenSessionID), []byte(sessionID)) != 1 {
+		log.Warn("CSRF token session ID mismatch")
+
+		return false
+	}
+
+	// Parse timestamp
+	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+	if err != nil {
+		log.Warn("Invalid CSRF token timestamp", zap.Error(err))
+
+		return false
+	}
+
+	// Check if token has expired
+	tokenTime := time.Unix(timestamp, 0)
+	if time.Since(tokenTime) > csrfTokenTTL {
+		log.Warn("CSRF token expired", zap.Time("token_time", tokenTime))
+
+		return false
+	}
+
+	// Recreate expected signature
+	message := fmt.Sprintf("%s:%d", sessionID, timestamp)
+	h := hmac.New(sha256.New, []byte(secretKey))
+	h.Write([]byte(message))
+	expectedSignature := hex.EncodeToString(h.Sum(nil))
+
+	// Compare signatures using constant time comparison
+	return subtle.ConstantTimeCompare([]byte(providedSignature), []byte(expectedSignature)) == 1
+}
+
+// GetCSRFToken generates and returns a CSRF token for the current session, setting it as a cookie for use in frontend applications.
+// Returns an empty string if the CSRF key is not configured or session ID generation fails.
+func GetCSRFToken(w http.ResponseWriter, r *http.Request) string {
+	if config.Conf.CSRFKey == "" {
+		return ""
+	}
+
+	sessionID, err := getOrCreateSessionID(w, r)
+	if err != nil {
+		log.Error("Failed to get or create session ID for CSRF token generation", zap.Error(err))
+
+		return "" // Fail securely by returning empty token
+	}
+
+	token := generateCSRFToken(sessionID, config.Conf.CSRFKey)
+
+	// Also set as cookie for double-submit pattern
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: false,            // Needs to be accessible by JavaScript
+		Secure:   !config.Conf.Dev, // Only require HTTPS in production
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(csrfTokenTTL.Seconds()),
+	})
+
+	return token
 }

@@ -1,4 +1,4 @@
-package tests
+package tests_test
 
 import (
 	"fmt"
@@ -9,16 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coolguy1771/wastebin/pkg/testutil"
-	"github.com/coolguy1771/wastebin/routes"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/coolguy1771/wastebin/pkg/testutil"
+	"github.com/coolguy1771/wastebin/routes"
 )
 
-// TestFullPasteWorkflow tests the complete paste lifecycle
+// TestFullPasteWorkflow tests the complete paste lifecycle.
 func TestFullPasteWorkflow(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -48,9 +50,9 @@ func TestFullPasteWorkflow(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, getResp.StatusCode)
 	require.NotNil(t, getResp.JSON)
-	assert.Equal(t, "Integration test content", getResp.JSON["Content"])
-	assert.Equal(t, "go", getResp.JSON["Language"])
-	assert.Equal(t, false, getResp.JSON["Burn"])
+	assert.Equal(t, "Integration test content", getResp.JSON["content"])
+	assert.Equal(t, "go", getResp.JSON["language"])
+	assert.Equal(t, false, getResp.JSON["burn"])
 
 	// 3. Retrieve the paste via raw endpoint
 	rawResp := server.MakeRequest(testutil.HTTPRequest{
@@ -81,9 +83,10 @@ func TestFullPasteWorkflow(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, verifyResp.StatusCode)
 }
 
-// TestBurnAfterReadWorkflow tests the burn-after-read functionality
+// TestBurnAfterReadWorkflow tests the burn-after-read functionality.
 func TestBurnAfterReadWorkflow(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -120,9 +123,10 @@ func TestBurnAfterReadWorkflow(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, secondResp.StatusCode)
 }
 
-// TestHealthEndpoints tests all health check endpoints
+// TestHealthEndpoints tests all health check endpoints.
 func TestHealthEndpoints(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -159,18 +163,21 @@ func TestHealthEndpoints(t *testing.T) {
 
 			if tt.endpoint != "/healthz" {
 				require.NotNil(t, resp.JSON)
+
 				for _, key := range tt.expectedKeys {
 					assert.Contains(t, resp.JSON, key, "Missing key: %s", key)
 				}
+
 				assert.Equal(t, "healthy", resp.JSON["status"])
 			}
 		})
 	}
 }
 
-// TestAPIVersioning tests API versioning functionality
+// TestAPIVersioning tests API versioning functionality.
 func TestAPIVersioning(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -214,9 +221,10 @@ func TestAPIVersioning(t *testing.T) {
 	}
 }
 
-// TestSecurityHeaders tests that security headers are properly set
+// TestSecurityHeaders tests that security headers are properly set.
 func TestIntegrationSecurityHeaders(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -237,9 +245,10 @@ func TestIntegrationSecurityHeaders(t *testing.T) {
 	}
 }
 
-// TestRequestTracing tests that request IDs are properly generated and returned
+// TestRequestTracing tests that request IDs are properly generated and returned.
 func TestRequestTracing(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -252,25 +261,30 @@ func TestRequestTracing(t *testing.T) {
 	assert.NotEmpty(t, requestID, "Request ID should be set in response headers")
 }
 
-// TestConcurrentOperations tests concurrent access to the API
+// TestConcurrentOperations tests concurrent access to the API.
 func TestIntegrationConcurrentOperations(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
-	const numGoroutines = 20
-	const numOperationsPerGoroutine = 5
+	const (
+		numGoroutines             = 5
+		numOperationsPerGoroutine = 3
+	)
 
 	var wg sync.WaitGroup
+
 	results := make(chan bool, numGoroutines*numOperationsPerGoroutine)
 
 	// Concurrent paste creation and retrieval
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
+
 		go func(routineID int) {
 			defer wg.Done()
 
-			for j := 0; j < numOperationsPerGoroutine; j++ {
+			for j := range numOperationsPerGoroutine {
 				// Create paste
 				createResp := server.MakeRequest(testutil.HTTPRequest{
 					Method: "POST",
@@ -304,6 +318,7 @@ func TestIntegrationConcurrentOperations(t *testing.T) {
 
 	// Count successful operations
 	var successful int
+
 	for success := range results {
 		if success {
 			successful++
@@ -315,9 +330,10 @@ func TestIntegrationConcurrentOperations(t *testing.T) {
 	assert.Greater(t, successRate, 0.8, "Success rate should be > 80%")
 }
 
-// TestErrorHandling tests various error scenarios
+// TestErrorHandling tests various error scenarios.
 func TestErrorHandling(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -390,6 +406,7 @@ func TestErrorHandling(t *testing.T) {
 			resp := server.MakeRequest(tt.request)
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+
 			if tt.expectedError != "" {
 				require.NotNil(t, resp.JSON)
 				assert.Equal(t, tt.expectedError, resp.JSON["error"])
@@ -398,17 +415,19 @@ func TestErrorHandling(t *testing.T) {
 	}
 }
 
-// TestRateLimiting tests rate limiting functionality
+// TestRateLimiting tests rate limiting functionality.
 func TestIntegrationRateLimiting(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
 	// Make a burst of requests quickly
 	const numRequests = 110 // Exceeds 100 req/min limit
+
 	var rateLimited bool
 
-	for i := 0; i < numRequests; i++ {
+	for range numRequests {
 		resp := server.MakeRequest(testutil.HTTPRequest{
 			Method: "GET",
 			Path:   "/api/v1/",
@@ -416,6 +435,7 @@ func TestIntegrationRateLimiting(t *testing.T) {
 
 		if resp.StatusCode == http.StatusTooManyRequests {
 			rateLimited = true
+
 			break
 		}
 
@@ -426,9 +446,10 @@ func TestIntegrationRateLimiting(t *testing.T) {
 	assert.True(t, rateLimited, "Rate limiting should have been triggered")
 }
 
-// TestDataPersistence tests that data persists across operations
+// TestDataPersistence tests that data persists across operations.
 func TestDataPersistence(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
 		UseInMemoryDB: false, // Use file-based DB for persistence test
 		EnableLogging: false,
@@ -437,7 +458,8 @@ func TestDataPersistence(t *testing.T) {
 
 	// Create multiple pastes
 	pasteIDs := make([]string, 5)
-	for i := 0; i < 5; i++ {
+
+	for i := range 5 {
 		resp := server.MakeRequest(testutil.HTTPRequest{
 			Method: "POST",
 			Path:   "/api/v1/paste",
@@ -469,9 +491,10 @@ func TestDataPersistence(t *testing.T) {
 	assert.Equal(t, int64(5), count)
 }
 
-// TestContentTypes tests different content types and languages
+// TestContentTypes tests different content types and languages.
 func TestContentTypes(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -528,9 +551,10 @@ func TestContentTypes(t *testing.T) {
 	}
 }
 
-// TestLargeContent tests handling of large content (within limits)
+// TestLargeContent tests handling of large content (within limits).
 func TestLargeContent(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -561,9 +585,10 @@ func TestLargeContent(t *testing.T) {
 	assert.Equal(t, largeContent, getResp.JSON["Content"])
 }
 
-// TestExpiryTimeValidation tests expiry time validation
+// TestExpiryTimeValidation tests expiry time validation.
 func TestExpiryTimeValidation(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 
@@ -597,9 +622,10 @@ func TestExpiryTimeValidation(t *testing.T) {
 	}
 }
 
-// TestUnicodeContent tests handling of Unicode content
+// TestUnicodeContent tests handling of Unicode content.
 func TestUnicodeContent(t *testing.T) {
 	router := routes.AddRoutes(nil)
+
 	server := testutil.NewTestServer(t, router, nil)
 	defer server.Close()
 

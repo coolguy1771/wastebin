@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestMain(t *testing.T) {
+func TestMain(_ *testing.T) {
 	// TODO: implement main function tests
 	// Test the main function
 	// Does the server start?

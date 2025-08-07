@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useEffect, useState, ReactNode } from 'react';
 import { config } from '../config/env';
 import { generateCSPHeader, isSecureContext, rateLimiter } from '../utils/security';
 
@@ -70,17 +70,6 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
   };
 
   return <SecurityContext.Provider value={contextValue}>{children}</SecurityContext.Provider>;
-};
-
-/**
- * Hook to use security context
- */
-export const useSecurity = (): SecurityContextType => {
-  const context = useContext(SecurityContext);
-  if (!context) {
-    throw new Error('useSecurity must be used within a SecurityProvider');
-  }
-  return context;
 };
 
 export default SecurityProvider;

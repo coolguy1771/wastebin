@@ -180,7 +180,7 @@ const shadows = {
     '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
     '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
   ],
-} as const;
+};
 
 // Create light theme
 const createLightTheme = (): ThemeOptions => ({
@@ -231,6 +231,7 @@ const createLightTheme = (): ThemeOptions => ({
   },
   typography,
   shape,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shadows: shadows.light as any,
 });
 
@@ -283,6 +284,7 @@ const createDarkTheme = (): ThemeOptions => ({
   },
   typography,
   shape,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shadows: shadows.dark as any,
 });
 

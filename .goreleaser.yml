@@ -55,17 +55,3 @@ signs:
       - "{{ .ArtifactPath }}.sig"
       - "{{ .ArtifactPath }}"
 
-slsa:
-  attestation:
-    version: 1.0.0
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}.intoto.jsonl"
-    subjects:
-      - "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
-  provenance:
-    version: 0.1
-    builder:
-      id: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}/actions/build@v1"
-    materials:
-      - id: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}@refs/tags/{{ .Version }}"
-        digest:
-          sha256: "{{ .Env.GITHUB_SHA }}"

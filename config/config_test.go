@@ -1,4 +1,4 @@
-package config
+package config_test
 
 import (
 	"os"
@@ -6,34 +6,36 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/coolguy1771/wastebin/config"
 )
 
 func TestLoadDefaultConfig(t *testing.T) {
 	// Clear any existing environment variables
-	clearWastebinEnvVars()
+	clearWastebinEnvVars(t)
 
 	// Set minimal required config for validation to pass
-	os.Setenv("WASTEBIN_LOCAL_DB", "true")
+	t.Setenv("WASTEBIN_LOCAL_DB", "true")
 	defer os.Unsetenv("WASTEBIN_LOCAL_DB")
 
-	config := Load()
+	cfg := config.Load()
 
 	// Test default values
-	assert.Equal(t, "3000", config.WebappPort)
-	assert.Equal(t, 10, config.DBMaxIdleConns)
-	assert.Equal(t, 50, config.DBMaxOpenConns)
-	assert.Equal(t, 5432, config.DBPort)
-	assert.Equal(t, "localhost", config.DBHost)
-	assert.Equal(t, "wastebin", config.DBUser)
-	assert.Equal(t, "wastebin", config.DBName)
-	assert.Equal(t, "INFO", config.LogLevel)
-	assert.Equal(t, true, config.LocalDB)
-	assert.Equal(t, false, config.Dev)
+	assert.Equal(t, "3000", cfg.WebappPort)
+	assert.Equal(t, 10, cfg.DBMaxIdleConns)
+	assert.Equal(t, 50, cfg.DBMaxOpenConns)
+	assert.Equal(t, 5432, cfg.DBPort)
+	assert.Equal(t, "localhost", cfg.DBHost)
+	assert.Equal(t, "wastebin", cfg.DBUser)
+	assert.Equal(t, "wastebin", cfg.DBName)
+	assert.Equal(t, "INFO", cfg.LogLevel)
+	assert.True(t, cfg.LocalDB)
+	assert.False(t, cfg.Dev)
 }
 
 func TestLoadEnvironmentVariables(t *testing.T) {
 	// Clear any existing environment variables
-	clearWastebinEnvVars()
+	clearWastebinEnvVars(t)
 
 	// Set environment variables
 	envVars := map[string]string{
@@ -51,203 +53,508 @@ func TestLoadEnvironmentVariables(t *testing.T) {
 	}
 
 	for key, value := range envVars {
-		os.Setenv(key, value)
+		t.Setenv(key, value)
 		defer os.Unsetenv(key)
 	}
 
-	config := Load()
+	cfg := config.Load()
 
 	// Test environment variable overrides
-	assert.Equal(t, "8080", config.WebappPort)
-	assert.Equal(t, 15, config.DBMaxIdleConns)
-	assert.Equal(t, 75, config.DBMaxOpenConns)
-	assert.Equal(t, 5433, config.DBPort)
-	assert.Equal(t, "testhost", config.DBHost)
-	assert.Equal(t, "testuser", config.DBUser)
-	assert.Equal(t, "testdb", config.DBName)
-	assert.Equal(t, "testpass", config.DBPassword)
-	assert.Equal(t, "DEBUG", config.LogLevel)
-	assert.Equal(t, false, config.LocalDB)
-	assert.Equal(t, true, config.Dev)
+	assert.Equal(t, "8080", cfg.WebappPort)
+	assert.Equal(t, 15, cfg.DBMaxIdleConns)
+	assert.Equal(t, 75, cfg.DBMaxOpenConns)
+	assert.Equal(t, 5433, cfg.DBPort)
+	assert.Equal(t, "testhost", cfg.DBHost)
+	assert.Equal(t, "testuser", cfg.DBUser)
+	assert.Equal(t, "testdb", cfg.DBName)
+	assert.Equal(t, "testpass", cfg.DBPassword)
+	assert.Equal(t, "DEBUG", cfg.LogLevel)
+	assert.False(t, cfg.LocalDB)
+	assert.True(t, cfg.Dev)
 }
 
 func TestConfigValidation(t *testing.T) {
 	tests := []struct {
 		name          string
-		config        Config
+		config        config.Config
 		expectError   bool
 		errorContains string
 	}{
 		{
 			name: "Valid local DB config",
-			config: Config{
-				WebappPort:     "3000",
-				DBMaxIdleConns: 5,
-				DBMaxOpenConns: 10,
-				LogLevel:       "INFO",
-				LocalDB:        true,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBMaxIdleConns:      5,
+				DBMaxOpenConns:      10,
+				LogLevel:            "INFO",
+				LocalDB:             true,
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError: false,
 		},
 		{
 			name: "Valid PostgreSQL config",
-			config: Config{
-				WebappPort:     "3000",
-				DBHost:         "localhost",
-				DBUser:         "user",
-				DBPassword:     "password",
-				DBName:         "database",
-				DBPort:         5432,
-				DBMaxIdleConns: 5,
-				DBMaxOpenConns: 10,
-				LogLevel:       "INFO",
-				LocalDB:        false,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBHost:              "localhost",
+				DBUser:              "user",
+				DBPassword:          "password",
+				DBName:              "database",
+				DBPort:              5432,
+				DBMaxIdleConns:      5,
+				DBMaxOpenConns:      10,
+				LogLevel:            "INFO",
+				LocalDB:             false,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError: false,
 		},
 		{
 			name: "Empty webapp port",
-			config: Config{
-				WebappPort: "",
-				LocalDB:    true,
-				LogLevel:   "INFO",
+			config: config.Config{
+				WebappPort:          "",
+				LocalDB:             true,
+				LogLevel:            "INFO",
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "webapp port must be specified",
 		},
 		{
 			name: "Invalid webapp port",
-			config: Config{
-				WebappPort: "invalid",
-				LocalDB:    true,
-				LogLevel:   "INFO",
+			config: config.Config{
+				WebappPort:          "invalid",
+				LocalDB:             true,
+				LogLevel:            "INFO",
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "webapp port must be a valid port number",
 		},
 		{
 			name: "Port out of range",
-			config: Config{
-				WebappPort: "99999",
-				LocalDB:    true,
-				LogLevel:   "INFO",
+			config: config.Config{
+				WebappPort:          "99999",
+				LocalDB:             true,
+				LogLevel:            "INFO",
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "webapp port must be a valid port number",
 		},
 		{
 			name: "Missing DB host for PostgreSQL",
-			config: Config{
-				WebappPort: "3000",
-				DBUser:     "user",
-				DBPassword: "password",
-				DBName:     "database",
-				DBPort:     5432,
-				LogLevel:   "INFO",
-				LocalDB:    false,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBUser:              "user",
+				DBPassword:          "password",
+				DBName:              "database",
+				DBPort:              5432,
+				LogLevel:            "INFO",
+				LocalDB:             false,
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database host is required",
 		},
 		{
 			name: "Missing DB user for PostgreSQL",
-			config: Config{
-				WebappPort: "3000",
-				DBHost:     "localhost",
-				DBPassword: "password",
-				DBName:     "database",
-				DBPort:     5432,
-				LogLevel:   "INFO",
-				LocalDB:    false,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBHost:              "localhost",
+				DBPassword:          "password",
+				DBName:              "database",
+				DBPort:              5432,
+				LogLevel:            "INFO",
+				LocalDB:             false,
+				DBUser:              "",
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database user is required",
 		},
 		{
 			name: "Missing DB password for PostgreSQL",
-			config: Config{
-				WebappPort: "3000",
-				DBHost:     "localhost",
-				DBUser:     "user",
-				DBName:     "database",
-				DBPort:     5432,
-				LogLevel:   "INFO",
-				LocalDB:    false,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBHost:              "localhost",
+				DBUser:              "user",
+				DBName:              "database",
+				DBPort:              5432,
+				LogLevel:            "INFO",
+				LocalDB:             false,
+				DBPassword:          "",
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database password is required",
 		},
 		{
 			name: "Missing DB name for PostgreSQL",
-			config: Config{
-				WebappPort: "3000",
-				DBHost:     "localhost",
-				DBUser:     "user",
-				DBPassword: "password",
-				DBPort:     5432,
-				LogLevel:   "INFO",
-				LocalDB:    false,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBHost:              "localhost",
+				DBUser:              "user",
+				DBPassword:          "password",
+				DBPort:              5432,
+				LogLevel:            "INFO",
+				LocalDB:             false,
+				DBName:              "",
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database name is required",
 		},
 		{
 			name: "Invalid DB port",
-			config: Config{
-				WebappPort: "3000",
-				DBHost:     "localhost",
-				DBUser:     "user",
-				DBPassword: "password",
-				DBName:     "database",
-				DBPort:     99999,
-				LogLevel:   "INFO",
-				LocalDB:    false,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBHost:              "localhost",
+				DBUser:              "user",
+				DBPassword:          "password",
+				DBName:              "database",
+				LogLevel:            "INFO",
+				LocalDB:             false,
+				DBPort:              99999,
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database port must be between 1 and 65535",
 		},
 		{
 			name: "Negative max idle connections",
-			config: Config{
-				WebappPort:     "3000",
-				DBMaxIdleConns: -1,
-				DBMaxOpenConns: 10,
-				LogLevel:       "INFO",
-				LocalDB:        true,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBMaxIdleConns:      -1,
+				DBMaxOpenConns:      10,
+				LogLevel:            "INFO",
+				LocalDB:             true,
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database max idle connections cannot be negative",
 		},
 		{
 			name: "Negative max open connections",
-			config: Config{
-				WebappPort:     "3000",
-				DBMaxIdleConns: 5,
-				DBMaxOpenConns: -1,
-				LogLevel:       "INFO",
-				LocalDB:        true,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBMaxIdleConns:      5,
+				DBMaxOpenConns:      -1,
+				LogLevel:            "INFO",
+				LocalDB:             true,
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database max open connections cannot be negative",
 		},
 		{
 			name: "Idle connections exceed open connections",
-			config: Config{
-				WebappPort:     "3000",
-				DBMaxIdleConns: 20,
-				DBMaxOpenConns: 10,
-				LogLevel:       "INFO",
-				LocalDB:        true,
+			config: config.Config{
+				WebappPort:          "3000",
+				DBMaxIdleConns:      20,
+				DBMaxOpenConns:      10,
+				LogLevel:            "INFO",
+				LocalDB:             true,
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "database max idle connections cannot exceed max open connections",
 		},
 		{
 			name: "Invalid log level",
-			config: Config{
-				WebappPort: "3000",
-				LogLevel:   "INVALID",
-				LocalDB:    true,
+			config: config.Config{
+				WebappPort:          "3000",
+				LogLevel:            "INVALID",
+				LocalDB:             true,
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				DBMaxIdleConns:      0,
+				DBMaxOpenConns:      0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			},
 			expectError:   true,
 			errorContains: "log level must be one of",
@@ -260,6 +567,7 @@ func TestConfigValidation(t *testing.T) {
 
 			if tt.expectError {
 				require.Error(t, err)
+
 				if tt.errorContains != "" {
 					assert.Contains(t, err.Error(), tt.errorContains)
 				}
@@ -272,78 +580,144 @@ func TestConfigValidation(t *testing.T) {
 
 func TestConfigValidationWithZeroValues(t *testing.T) {
 	// Test that zero values for connection pool settings are allowed
-	config := Config{
-		WebappPort:     "3000",
-		DBMaxIdleConns: 0, // Should be allowed (will use defaults)
-		DBMaxOpenConns: 0, // Should be allowed (will use defaults)
-		LogLevel:       "INFO",
-		LocalDB:        true,
+	cfg := config.Config{
+		WebappPort:          "3000",
+		DBMaxIdleConns:      0, // Should be allowed (will use defaults)
+		DBMaxOpenConns:      0, // Should be allowed (will use defaults)
+		LogLevel:            "INFO",
+		LocalDB:             true,
+		DBUser:              "",
+		DBPassword:          "",
+		DBHost:              "",
+		DBPort:              0,
+		Dev:                 false,
+		TLSEnabled:          false,
+		TLSCertFile:         "",
+		TLSKeyFile:          "",
+		AllowedOrigins:      "",
+		RequireAuth:         false,
+		AuthUsername:        "",
+		AuthPassword:        "",
+		CSRFKey:             "",
+		MaxRequestSize:      1024 * 1024, // 1MB minimum
+		TracingEnabled:      false,
+		MetricsEnabled:      false,
+		ServiceName:         "",
+		ServiceVersion:      "",
+		Environment:         "",
+		OTLPTraceEndpoint:   "",
+		OTLPMetricsEndpoint: "",
+		MetricsInterval:     0,
 	}
 
-	err := config.Validate()
+	err := cfg.Validate()
 	assert.NoError(t, err)
 }
 
 func TestLogLevelCaseInsensitive(t *testing.T) {
-	logLevels := []string{"debug", "info", "warn", "error", "fatal", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"}
-
+	logLevels := []string{"debug", "INFO", "Warn", "error", "FATAL"}
 	for _, level := range logLevels {
-		t.Run("LogLevel-"+level, func(t *testing.T) {
-			config := Config{
-				WebappPort: "3000",
-				LogLevel:   level,
-				LocalDB:    true,
+		t.Run(level, func(t *testing.T) {
+			cfg := config.Config{
+				WebappPort:          "3000",
+				DBMaxIdleConns:      5,
+				DBMaxOpenConns:      10,
+				LogLevel:            level,
+				LocalDB:             true,
+				DBUser:              "",
+				DBPassword:          "",
+				DBHost:              "",
+				DBPort:              0,
+				Dev:                 false,
+				TLSEnabled:          false,
+				TLSCertFile:         "",
+				TLSKeyFile:          "",
+				AllowedOrigins:      "",
+				RequireAuth:         false,
+				AuthUsername:        "",
+				AuthPassword:        "",
+				CSRFKey:             "",
+				MaxRequestSize:      1024 * 1024, // 1MB minimum
+				TracingEnabled:      false,
+				MetricsEnabled:      false,
+				ServiceName:         "",
+				ServiceVersion:      "",
+				Environment:         "",
+				OTLPTraceEndpoint:   "",
+				OTLPMetricsEndpoint: "",
+				MetricsInterval:     0,
 			}
 
-			err := config.Validate()
+			err := cfg.Validate()
 			assert.NoError(t, err, "Log level %s should be valid", level)
 		})
 	}
 }
 
-// Helper function to clear all WASTEBIN_ environment variables
-func clearWastebinEnvVars() {
-	envVars := []string{
-		"WASTEBIN_WEBAPP_PORT",
-		"WASTEBIN_DB_MAX_IDLE_CONNS",
-		"WASTEBIN_DB_MAX_OPEN_CONNS",
-		"WASTEBIN_DB_PORT",
-		"WASTEBIN_DB_HOST",
-		"WASTEBIN_DB_USER",
-		"WASTEBIN_DB_NAME",
-		"WASTEBIN_DB_PASSWORD",
-		"WASTEBIN_LOG_LEVEL",
-		"WASTEBIN_LOCAL_DB",
-		"WASTEBIN_DEV",
-	}
+// clearWastebinEnvVars unsets all WASTEBIN_ environment variables for test isolation.
+func clearWastebinEnvVars(t *testing.T) {
+	t.Helper()
 
-	for _, envVar := range envVars {
-		os.Unsetenv(envVar)
+	for _, env := range os.Environ() {
+		if len(env) > 9 && env[:9] == "WASTEBIN_" {
+			parts := []rune(env)
+			for i, c := range parts {
+				if c == '=' {
+					os.Unsetenv(string(parts[:i]))
+
+					break
+				}
+			}
+		}
 	}
 }
 
 func BenchmarkLoadConfig(b *testing.B) {
 	// Set minimal required config
-	os.Setenv("WASTEBIN_LOCAL_DB", "true")
+	b.Setenv("WASTEBIN_LOCAL_DB", "true")
 	defer os.Unsetenv("WASTEBIN_LOCAL_DB")
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		Load()
+
+	for range b.N {
+		config.Load()
 	}
 }
 
 func BenchmarkValidateConfig(b *testing.B) {
-	config := Config{
-		WebappPort:     "3000",
-		DBMaxIdleConns: 5,
-		DBMaxOpenConns: 10,
-		LogLevel:       "INFO",
-		LocalDB:        true,
+	config := config.Config{
+		WebappPort:          "3000",
+		DBMaxIdleConns:      5,
+		DBMaxOpenConns:      10,
+		LogLevel:            "INFO",
+		LocalDB:             true,
+		DBUser:              "",
+		DBPassword:          "",
+		DBHost:              "",
+		DBPort:              0,
+		Dev:                 false,
+		TLSEnabled:          false,
+		TLSCertFile:         "",
+		TLSKeyFile:          "",
+		AllowedOrigins:      "",
+		RequireAuth:         false,
+		AuthUsername:        "",
+		AuthPassword:        "",
+		CSRFKey:             "",
+		MaxRequestSize:      1024 * 1024, // 1MB minimum
+		TracingEnabled:      false,
+		MetricsEnabled:      false,
+		ServiceName:         "",
+		ServiceVersion:      "",
+		Environment:         "",
+		OTLPTraceEndpoint:   "",
+		OTLPMetricsEndpoint: "",
+		MetricsInterval:     0,
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		config.Validate()
 	}
 }

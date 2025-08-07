@@ -1,59 +1,14 @@
 /**
- * Test utilities and custom render functions
+ * Test utilities
  */
 
-import React, { ReactElement, ReactNode } from 'react';
-import { render, RenderOptions } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { ThemeContextProvider } from '@contexts/ThemeContext';
-import { SecurityProvider } from '@contexts/SecurityContext';
-import { ErrorBoundary } from '@components/ErrorBoundary';
-
-// Custom render with providers
-interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
-  initialEntries?: string[];
-  withErrorBoundary?: boolean;
-  theme?: 'light' | 'dark';
-}
-
-// All providers wrapper
-const AllProviders: React.FC<{
-  children: ReactNode;
-  initialEntries?: string[];
-  withErrorBoundary?: boolean;
-}> = ({ children, initialEntries: _initialEntries = ['/'], withErrorBoundary = true }) => {
-  const content = withErrorBoundary ? <ErrorBoundary>{children}</ErrorBoundary> : children;
-
-  return (
-    <BrowserRouter>
-      <SecurityProvider>
-        <ThemeContextProvider>{content}</ThemeContextProvider>
-      </SecurityProvider>
-    </BrowserRouter>
-  );
-};
-
-// Custom render function
-export const renderWithProviders = (ui: ReactElement, options: CustomRenderOptions = {}) => {
-  const { initialEntries, withErrorBoundary, theme, ...renderOptions } = options;
-
-  // Set theme in localStorage if specified
-  if (theme) {
-    localStorage.setItem('wastebin-theme-mode', theme);
-  }
-
-  return render(ui, {
-    wrapper: ({ children }) => (
-      <AllProviders initialEntries={initialEntries} withErrorBoundary={withErrorBoundary}>
-        {children}
-      </AllProviders>
-    ),
-    ...renderOptions,
-  });
-};
+import userEvent from '@testing-library/user-event';
 
 // Form testing utilities
-export const fillForm = async (user: any, fields: Record<string, string | boolean>) => {
+export const fillForm = async (
+  user: ReturnType<typeof userEvent.setup>,
+  fields: Record<string, string | boolean>
+) => {
   for (const [name, value] of Object.entries(fields)) {
     const field = document.querySelector(`[name="${name}"]`) as HTMLElement;
 
@@ -109,7 +64,7 @@ export const createMockPaste = (overrides = {}) => ({
 });
 
 // API mock helpers
-export const mockApiSuccess = (data: any) => {
+export const mockApiSuccess = (data: unknown) => {
   return Promise.resolve({
     ok: true,
     status: 200,
@@ -118,7 +73,7 @@ export const mockApiSuccess = (data: any) => {
   });
 };
 
-export const mockApiError = (_status = 500, message = 'Server error') => {
+export const mockApiError = (message = 'Server error') => {
   return Promise.reject(new Error(message));
 };
 
@@ -174,15 +129,6 @@ export const measureRenderTime = async (renderFn: () => void): Promise<number> =
   return end - start;
 };
 
-// Error boundary testing
-export const triggerErrorBoundary = () => {
-  const ThrowError = () => {
-    throw new Error('Test error for error boundary');
-  };
-  return <ThrowError />;
-};
-
-// Export everything for convenience
-export * from '@testing-library/react';
-export * from '@testing-library/user-event';
-export { renderWithProviders as render };
+// Re-export specific utilities for convenience
+export { screen, waitFor, within, fireEvent } from '@testing-library/react';
+export { userEvent } from '@testing-library/user-event';
