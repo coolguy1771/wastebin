@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
-import { SelectChangeEvent } from '@mui/material';
 
-export interface ValidationRule<T = any> {
+export interface ValidationRule<T> {
   required?: boolean;
   minLength?: number;
   maxLength?: number;
@@ -10,16 +9,18 @@ export interface ValidationRule<T = any> {
   message?: string;
 }
 
-export interface FormField<T = any> {
+export interface FormField<T> {
   value: T;
   error: string | null;
   touched: boolean;
   rules?: ValidationRule<T>;
 }
 
+export type FormValidationRules<T> = { [K in keyof T]?: ValidationRule<T[K]> };
+
 export interface UseFormOptions<T> {
   initialValues: T;
-  validationRules?: Partial<Record<keyof T, ValidationRule>>;
+  validationRules?: FormValidationRules<T>;
   onSubmit?: (values: T) => Promise<void> | void;
 }
 
@@ -29,24 +30,11 @@ export interface UseFormReturn<T> {
   touched: Partial<Record<keyof T, boolean>>;
   isValid: boolean;
   isSubmitting: boolean;
-  setValue: (field: keyof T, value: any) => void;
+  setValue: (field: keyof T, value: T[keyof T]) => void;
   setFieldError: (field: keyof T, error: string | null) => void;
   setFieldTouched: (field: keyof T, touched?: boolean) => void;
   reset: () => void;
   handleSubmit: (e?: React.FormEvent) => Promise<void>;
-  getFieldProps: (field: keyof T) => {
-    value: any;
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-    onBlur: () => void;
-    error: boolean;
-    helperText: string | undefined;
-  };
-  getSelectProps: (field: keyof T) => {
-    value: any;
-    onChange: (e: SelectChangeEvent) => void;
-    onBlur: () => void;
-    error: boolean;
-  };
 }
 
 /**
@@ -64,7 +52,7 @@ export function useForm<T extends Record<string, any>>({
 
   // Validation function
   const validateField = useCallback(
-    (field: keyof T, value: any): string | null => {
+    (field: keyof T, value: T[keyof T]): string | null => {
       const rules = validationRules[field];
       if (!rules) return null;
 
@@ -126,7 +114,7 @@ export function useForm<T extends Record<string, any>>({
 
   // Set field value with validation
   const setValue = useCallback(
-    (field: keyof T, value: any) => {
+    (field: keyof T, value: T[keyof T]) => {
       setValues(prev => ({ ...prev, [field]: value }));
 
       // Validate field if it's been touched
@@ -198,37 +186,6 @@ export function useForm<T extends Record<string, any>>({
     [values, validateForm, onSubmit]
   );
 
-  // Get field props for easy integration with Material-UI
-  const getFieldProps = useCallback(
-    (field: keyof T) => ({
-      value: values[field] || '',
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setValue(field, e.target.value);
-      },
-      onBlur: () => {
-        setFieldTouched(field, true);
-      },
-      error: !!(touched[field] && errors[field]),
-      helperText: touched[field] ? errors[field] : undefined,
-    }),
-    [values, errors, touched, setValue, setFieldTouched]
-  );
-
-  // Get select props for Material-UI Select components
-  const getSelectProps = useCallback(
-    (field: keyof T) => ({
-      value: values[field] || '',
-      onChange: (e: SelectChangeEvent) => {
-        setValue(field, e.target.value);
-      },
-      onBlur: () => {
-        setFieldTouched(field, true);
-      },
-      error: !!(touched[field] && errors[field]),
-    }),
-    [values, errors, touched, setValue, setFieldTouched]
-  );
-
   // Check if form is valid
   const isValid = useMemo(() => {
     return Object.keys(errors).length === 0;
@@ -245,7 +202,5 @@ export function useForm<T extends Record<string, any>>({
     setFieldTouched,
     reset,
     handleSubmit,
-    getFieldProps,
-    getSelectProps,
   };
 }

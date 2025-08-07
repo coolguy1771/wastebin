@@ -13,7 +13,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import { Link, useLocation } from 'react-router-dom';
-import { useThemeMode } from '../contexts/ThemeContext';
+import { useThemeMode } from '../hooks/useThemeMode';
 import { useResponsive } from '../theme/responsive';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';

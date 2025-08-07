@@ -38,8 +38,16 @@ const CreatePastePage: React.FC = () => {
   const { isMobile } = useResponsive();
 
   // Form handling with validation
-  const { values, errors, isValid, isSubmitting, getFieldProps, getSelectProps, handleSubmit } =
-    useForm<PasteFormData>({
+  const {
+    values,
+    errors,
+    touched,
+    isValid,
+    isSubmitting,
+    setValue,
+    setFieldTouched,
+    handleSubmit,
+  } = useForm<PasteFormData>({
       initialValues: {
         content: '',
         language: 'plaintext',
@@ -137,7 +145,11 @@ const CreatePastePage: React.FC = () => {
                 multiline
                 variant="outlined"
                 fullWidth
-                {...getFieldProps('content')}
+                value={values.content}
+                onChange={e => setValue('content', e.target.value)}
+                onBlur={() => setFieldTouched('content')}
+                error={touched.content && !!errors.content}
+                helperText={touched.content && errors.content}
                 InputProps={{
                   sx: {
                     fontFamily: 'JetBrains Mono, Monaco, Consolas, monospace',
@@ -207,8 +219,12 @@ const CreatePastePage: React.FC = () => {
               <CodeIcon fontSize="small" />
               Language
             </Typography>
-            <FormControl fullWidth size="small">
-              <Select {...getSelectProps('language')}>
+            <FormControl fullWidth size="small" error={touched.language && !!errors.language}>
+              <Select
+                value={values.language}
+                onChange={e => setValue('language', e.target.value)}
+                onBlur={() => setFieldTouched('language')}
+              >
                 {languageOptions.map(option => (
                   <MenuItem key={option.value} value={option.value}>
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -235,8 +251,12 @@ const CreatePastePage: React.FC = () => {
               <TimerIcon fontSize="small" />
               Expiration
             </Typography>
-            <FormControl fullWidth size="small">
-              <Select {...getSelectProps('expires')}>
+            <FormControl fullWidth size="small" error={touched.expires && !!errors.expires}>
+              <Select
+                value={values.expires}
+                onChange={e => setValue('expires', e.target.value)}
+                onBlur={() => setFieldTouched('expires')}
+              >
                 {expiryOptions.map(option => (
                   <MenuItem key={option.value} value={option.value}>
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -267,9 +287,7 @@ const CreatePastePage: React.FC = () => {
               control={
                 <Checkbox
                   checked={values.burn}
-                  onChange={e =>
-                    getFieldProps('burn').onChange({ target: { value: e.target.checked } } as any)
-                  }
+                  onChange={e => setValue('burn', e.target.checked)}
                 />
               }
               label={

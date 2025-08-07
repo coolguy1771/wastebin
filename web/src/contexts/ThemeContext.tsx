@@ -1,17 +1,17 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useEffect, useState, ReactNode } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { PaletteMode } from '@mui/material';
 import { createAppTheme } from '../theme/theme';
 import { config } from '../config/env';
 
-interface ThemeContextType {
+export interface ThemeContextType {
   mode: PaletteMode;
   toggleColorMode: () => void;
   setColorMode: (mode: PaletteMode) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeContextProviderProps {
   children: ReactNode;
@@ -96,17 +96,6 @@ export const ThemeContextProvider: React.FC<ThemeContextProviderProps> = ({ chil
       </ThemeProvider>
     </ThemeContext.Provider>
   );
-};
-
-/**
- * Hook to use theme context
- */
-export const useThemeMode = (): ThemeContextType => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useThemeMode must be used within a ThemeContextProvider');
-  }
-  return context;
 };
 
 export default ThemeContextProvider;

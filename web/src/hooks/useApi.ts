@@ -8,13 +8,13 @@ export interface UseApiState<T> {
   isRetryable: boolean;
 }
 
-export interface UseApiActions {
+export interface UseApiActions<T> {
   retry: () => Promise<void>;
   reset: () => void;
-  execute: (operation: () => Promise<any>) => Promise<any>;
+  execute: (operation: () => Promise<T>) => Promise<T | null>;
 }
 
-export type UseApiReturn<T> = UseApiState<T> & UseApiActions;
+export type UseApiReturn<T> = UseApiState<T> & UseApiActions<T>;
 
 /**
  * Custom hook for handling API operations with loading, error states, and retry functionality
@@ -99,7 +99,7 @@ export function useApiMutation(): UseApiReturn<void> & {
     async (operation: () => Promise<void>): Promise<void> => {
       await api.execute(operation);
     },
-    [api.execute]
+    [api]
   );
 
   return {
