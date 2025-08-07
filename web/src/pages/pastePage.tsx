@@ -39,7 +39,7 @@ import { useApi } from '../hooks/useApi';
 import { pasteAPI, type PasteDetails } from '../services/api';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorDisplay } from '../components/ErrorDisplay';
-import { useThemeMode } from '../contexts/ThemeContext';
+import { useThemeMode } from '../hooks/useThemeMode';
 import { useResponsive } from '../theme/responsive';
 import { getLanguageDisplayName } from '../utils/validation';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -116,7 +116,7 @@ const PastePage: React.FC = () => {
           title: 'Wastebin Paste',
           url: url,
         });
-      } catch (err) {
+      } catch {
         // Fallback to clipboard
         await navigator.clipboard.writeText(url);
         setCopySuccess(true);

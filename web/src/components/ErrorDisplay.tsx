@@ -123,8 +123,7 @@ export const NotFoundErrorDisplay: React.FC<{ resourceName?: string }> = ({
 
 export const ValidationErrorDisplay: React.FC<{
   errors: string[];
-  onDismiss?: () => void;
-}> = ({ errors, onDismiss: _onDismiss }) => (
+}> = ({ errors }) => (
   <ErrorDisplay
     error={errors.join(', ')}
     title="Please correct the following issues:"

@@ -1,4 +1,4 @@
-import { ValidationRule } from '../hooks/useForm';
+import { FormValidationRules } from '../hooks/useForm';
 
 // Constants for validation
 export const PASTE_CONSTRAINTS = {
@@ -94,7 +94,7 @@ export interface PasteFormData {
   burn: boolean;
 }
 
-export const pasteValidationRules: Record<keyof PasteFormData, ValidationRule> = {
+export const pasteValidationRules: FormValidationRules<PasteFormData> = {
   content: {
     required: true,
     custom: validatePasteContent,

@@ -1,4 +1,3 @@
-version: "2"
 run:
   timeout: 5m
   go: "1.24"
@@ -119,6 +118,7 @@ output:
   path-prefix: ""
 
   # Sort results for consistent output
+  sort-results: true
   sort-order:
     - linter
     - severity
