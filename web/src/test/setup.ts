@@ -9,6 +9,37 @@ import { afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { handlers } from './mocks/handlers';
 
+// Set up test environment variables
+vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+vi.stubEnv('VITE_APP_TITLE', 'Wastebin Test');
+vi.stubEnv('VITE_DEFAULT_LANGUAGE', 'plaintext');
+vi.stubEnv('VITE_DEFAULT_EXPIRY', '60');
+vi.stubEnv('VITE_ENABLE_ANALYTICS', 'false');
+vi.stubEnv('VITE_ENABLE_TELEMETRY', 'false');
+vi.stubEnv('VITE_MAX_PASTE_SIZE', '10485760');
+vi.stubEnv('VITE_SUPPORTED_LANGUAGES', 'plaintext,javascript,python,go,rust');
+vi.stubEnv('VITE_THEME_MODE', 'light');
+vi.stubEnv('VITE_ENABLE_BURN_AFTER_READ', 'true');
+vi.stubEnv('VITE_ENABLE_CUSTOM_EXPIRY', 'true');
+vi.stubEnv('VITE_ENABLE_SYNTAX_HIGHLIGHTING', 'true');
+vi.stubEnv('VITE_ENABLE_LINE_NUMBERS', 'true');
+vi.stubEnv('VITE_ENABLE_WORD_WRAP', 'true');
+vi.stubEnv('VITE_ENABLE_RAW_VIEW', 'true');
+vi.stubEnv('VITE_ENABLE_DOWNLOAD', 'true');
+vi.stubEnv('VITE_ENABLE_SHARE', 'true');
+vi.stubEnv('VITE_ENABLE_COPY', 'true');
+vi.stubEnv('VITE_ENABLE_QR_CODE', 'false');
+vi.stubEnv('VITE_ENABLE_PRINT', 'true');
+vi.stubEnv('VITE_ENABLE_FULLSCREEN', 'true');
+vi.stubEnv('VITE_ENABLE_THEME_TOGGLE', 'true');
+vi.stubEnv('VITE_ENABLE_SHORTCUTS', 'true');
+vi.stubEnv('VITE_ENABLE_SEARCH', 'true');
+vi.stubEnv('VITE_ENABLE_HISTORY', 'true');
+vi.stubEnv('VITE_ENABLE_STATS', 'false');
+vi.stubEnv('VITE_ENABLE_RATE_LIMITING', 'true');
+vi.stubEnv('VITE_RATE_LIMIT_MAX_REQUESTS', '100');
+vi.stubEnv('VITE_RATE_LIMIT_WINDOW_MS', '60000');
+
 // Mock server setup
 export const server = setupServer(...handlers);
 

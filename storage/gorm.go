@@ -10,7 +10,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	"github.com/coolguy1771/wastebin/config"
 	"github.com/coolguy1771/wastebin/log"
@@ -87,34 +86,18 @@ func ConnectWithRetry(maxRetries int, obs *observability.Provider) error {
 func connectSQLite(obs *observability.Provider) (*gorm.DB, error) {
 	log.Info("Connecting to local SQLite database")
 
+	// Use Zap logger adapter for GORM
+	gormLogger := NewGormZapLogger(log.Default())
+
 	// Configure GORM
-	config := &gorm.Config{
-		Logger:                                   logger.Default,
+	gormConfig := &gorm.Config{
+		Logger:                                   gormLogger,
 		SkipDefaultTransaction:                   false,
-		DefaultTransactionTimeout:                0,
-		NamingStrategy:                           nil,
-		FullSaveAssociations:                     false,
-		NowFunc:                                  nil,
-		DryRun:                                   false,
-		PrepareStmt:                              false,
-		PrepareStmtMaxSize:                       0,
-		PrepareStmtTTL:                           0,
 		DisableAutomaticPing:                     false,
 		DisableForeignKeyConstraintWhenMigrating: false,
-		IgnoreRelationshipsWhenMigrating:         false,
-		DisableNestedTransaction:                 false,
-		AllowGlobalUpdate:                        false,
-		QueryFields:                              false,
-		CreateBatchSize:                          0,
-		TranslateError:                           false,
-		PropagateUnscoped:                        false,
-		ClauseBuilders:                           nil,
-		ConnPool:                                 nil,
-		Dialector:                                nil,
-		Plugins:                                  nil,
 	}
 
-	conn, err := gorm.Open(sqlite.Open("dev.db"), config)
+	conn, err := gorm.Open(sqlite.Open("dev.db"), gormConfig)
 	if err != nil {
 		log.Error("Error connecting to SQLite database", zap.Error(err))
 
@@ -123,7 +106,7 @@ func connectSQLite(obs *observability.Provider) (*gorm.DB, error) {
 
 	// Apply observability instrumentation after connection is established
 	if obs != nil {
-		conn = obs.InstrumentGorm(conn, config.Logger)
+		conn = obs.InstrumentGorm(conn, gormLogger)
 	}
 
 	log.Info("Connected to local SQLite database")
@@ -148,31 +131,15 @@ func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("user=%s password=%s host=%s dbname=%s port=%d sslmode=%s",
 		config.Conf.DBUser, config.Conf.DBPassword, config.Conf.DBHost, config.Conf.DBName, config.Conf.DBPort, sslMode)
 
+	// Use Zap logger adapter for GORM
+	gormLogger := NewGormZapLogger(log.Default())
+
 	// Configure GORM
 	gormConfig := &gorm.Config{
-		Logger:                                   logger.Default,
+		Logger:                                   gormLogger,
 		SkipDefaultTransaction:                   false,
-		DefaultTransactionTimeout:                0,
-		NamingStrategy:                           nil,
-		FullSaveAssociations:                     false,
-		NowFunc:                                  nil,
-		DryRun:                                   false,
-		PrepareStmt:                              false,
-		PrepareStmtMaxSize:                       0,
-		PrepareStmtTTL:                           0,
 		DisableAutomaticPing:                     false,
 		DisableForeignKeyConstraintWhenMigrating: false,
-		IgnoreRelationshipsWhenMigrating:         false,
-		DisableNestedTransaction:                 false,
-		AllowGlobalUpdate:                        false,
-		QueryFields:                              false,
-		CreateBatchSize:                          0,
-		TranslateError:                           false,
-		PropagateUnscoped:                        false,
-		ClauseBuilders:                           nil,
-		ConnPool:                                 nil,
-		Dialector:                                nil,
-		Plugins:                                  nil,
 	}
 
 	conn, err := gorm.Open(postgres.Open(dsn), gormConfig)
@@ -189,7 +156,7 @@ func connectPostgres(obs *observability.Provider) (*gorm.DB, error) {
 
 	// Apply observability instrumentation after connection is established
 	if obs != nil {
-		conn = obs.InstrumentGorm(conn, gormConfig.Logger)
+		conn = obs.InstrumentGorm(conn, gormLogger)
 	}
 
 	log.Info("Connected to remote PostgreSQL database")

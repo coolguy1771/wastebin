@@ -280,6 +280,7 @@ $RECYCLE.BIN/
 
 # and uncomment the following lines
 # .pnp.*
-dev.db
-golanci-lint-report.*
-golangci-lint-report.json
+
+*.db
+golangci-lint-report*
+wastebin

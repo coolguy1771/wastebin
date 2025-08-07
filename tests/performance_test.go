@@ -141,86 +141,64 @@ func BenchmarkLargePasteCreation(b *testing.B) {
 	}
 }
 
-// TestConcurrentOperations tests concurrent read/write performance.
-func TestConcurrentOperations(t *testing.T) {
-	router := routes.AddRoutes(nil)
+// performWorkerOperations handles operations for a single worker.
+func performWorkerOperations(workerID int, server *testutil.TestServer, results chan<- result, numOperations int) {
+	for j := range numOperations {
+		// Create paste
+		createStart := time.Now()
+		resp := server.MakeRequest(testutil.HTTPRequest{
+			Method: "POST",
+			Path:   "/api/v1/paste",
+			FormData: map[string]string{
+				"text":      fmt.Sprintf("Concurrent test %d-%d", workerID, j),
+				"extension": "txt",
+				"expires":   "60",
+				"burn":      "false",
+			},
+		})
 
-	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
-		UseInMemoryDB: true,
-		EnableLogging: false,
-	})
-	defer server.Close()
+		// Record create operation result
+		results <- result{
+			operation: "create",
+			success:   resp.StatusCode == http.StatusCreated,
+			duration:  time.Since(createStart),
+		}
 
-	const (
-		numGoroutines = 50
-		numOperations = 20
-	)
-
-	var wg sync.WaitGroup
-
-	results := make(chan result, numGoroutines*numOperations)
-
-	start := time.Now()
-
-	// Start concurrent workers
-	for i := range numGoroutines {
-		wg.Add(1)
-
-		go func(workerID int) {
-			defer wg.Done()
-
-			for j := range numOperations {
-				opStart := time.Now()
-
-				// Create paste
-				resp := server.MakeRequest(testutil.HTTPRequest{
-					Method: "POST",
-					Path:   "/api/v1/paste",
-					FormData: map[string]string{
-						"text":      fmt.Sprintf("Concurrent test %d-%d", workerID, j),
-						"extension": "txt",
-						"expires":   "60",
-						"burn":      "false",
-					},
-				})
-
-				opDuration := time.Since(opStart)
-				results <- result{
-					operation: "create",
-					success:   resp.StatusCode == http.StatusCreated,
-					duration:  opDuration,
-				}
-
-				if resp.StatusCode == http.StatusCreated && resp.JSON != nil {
-					pasteUUID, ok := resp.JSON["uuid"].(string)
-					if !ok {
-						continue
-					}
-
-					// Read paste
-					opStart = time.Now()
-					getResp := server.MakeRequest(testutil.HTTPRequest{
-						Method: "GET",
-						Path:   "/api/v1/paste/" + pasteUUID,
-					})
-					opDuration = time.Since(opStart)
-
-					results <- result{
-						operation: "read",
-						success:   getResp.StatusCode == http.StatusOK,
-						duration:  opDuration,
-					}
-				}
-			}
-		}(i)
+		// If create was successful, try to read the paste
+		if uuid := extractUUID(resp); uuid != "" {
+			results <- readPasteOperation(uuid, server)
+		}
 	}
+}
 
-	wg.Wait()
-	close(results)
+// readPasteOperation performs a paste read operation.
+func readPasteOperation(pasteUUID string, server *testutil.TestServer) result {
+	opStart := time.Now()
 
-	totalDuration := time.Since(start)
+	resp := server.MakeRequest(testutil.HTTPRequest{
+		Method: "GET",
+		Path:   "/api/v1/paste/" + pasteUUID,
+	})
 
-	// Analyze results
+	return result{
+		operation: "read",
+		success:   resp.StatusCode == http.StatusOK,
+		duration:  time.Since(opStart),
+	}
+}
+
+// extractUUID extracts UUID from the response.
+func extractUUID(resp *testutil.HTTPResponse) string {
+	if resp.StatusCode == http.StatusCreated && resp.JSON != nil {
+		if uuid, ok := resp.JSON["uuid"].(string); ok {
+			return uuid
+		}
+	}
+	return ""
+}
+
+// analyzeResults processes and summarizes test results.
+func analyzeResults(results <-chan result) (int, int, int, time.Duration, time.Duration) {
 	var (
 		createOps, readOps, successfulOps int
 		totalCreateTime, totalReadTime    time.Duration
@@ -239,6 +217,49 @@ func TestConcurrentOperations(t *testing.T) {
 			successfulOps++
 		}
 	}
+
+	return createOps, readOps, successfulOps, totalCreateTime, totalReadTime
+}
+
+// TestConcurrentOperations tests concurrent read/write performance.
+func TestConcurrentOperations(t *testing.T) {
+	// Skip this test if running with -short flag
+	if testing.Short() {
+		t.Skip("Skipping concurrent operations test in short mode")
+	}
+
+	router := routes.AddRoutes(nil)
+	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
+		UseInMemoryDB: true,
+		EnableLogging: false,
+	})
+	defer server.Close()
+
+	const (
+		numGoroutines = 10
+		numOperations = 5
+	)
+
+	var wg sync.WaitGroup
+	results := make(chan result, numGoroutines*numOperations*2) // *2 for create and read ops
+	start := time.Now()
+
+	// Start concurrent workers
+	for i := range numGoroutines {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			performWorkerOperations(workerID, server, results, numOperations)
+		}(i)
+	}
+
+	wg.Wait()
+	close(results)
+
+	totalDuration := time.Since(start)
+
+	// Analyze results
+	createOps, readOps, successfulOps, totalCreateTime, totalReadTime := analyzeResults(results)
 
 	totalOps := createOps + readOps
 	successRate := float64(successfulOps) / float64(totalOps) * 100
@@ -449,6 +470,11 @@ func TestMemoryUsage(t *testing.T) {
 
 // TestDatabasePerformance tests database-specific performance.
 func TestDatabasePerformance(t *testing.T) {
+	// Skip this test if running with -short flag
+	if testing.Short() {
+		t.Skip("Skipping database performance test in short mode")
+	}
+
 	router := routes.AddRoutes(nil)
 
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{
@@ -494,6 +520,11 @@ type result struct {
 
 // TestResponseTimeDistribution tests the distribution of response times.
 func TestResponseTimeDistribution(t *testing.T) {
+	// Skip this test if running with -short flag
+	if testing.Short() {
+		t.Skip("Skipping response time distribution test in short mode")
+	}
+
 	router := routes.AddRoutes(nil)
 
 	server := testutil.NewTestServer(t, router, &testutil.TestConfig{

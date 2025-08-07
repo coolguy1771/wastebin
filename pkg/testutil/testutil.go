@@ -21,6 +21,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/coolguy1771/wastebin/config"
+	"github.com/coolguy1771/wastebin/log"
 	"github.com/coolguy1771/wastebin/models"
 	"github.com/coolguy1771/wastebin/storage"
 )
@@ -33,6 +34,11 @@ var testDBMutex sync.Mutex
 const (
 	// HTTP client timeout for tests.
 	httpClientTimeout = 10 * time.Second
+
+	// HTTP client connection pool settings.
+	maxIdleConns        = 100
+	maxIdleConnsPerHost = 100
+	idleConnTimeout     = 90 * time.Second
 
 	// Wait condition check interval.
 	waitCheckInterval = 10 * time.Millisecond
@@ -51,6 +57,18 @@ const (
 	defaultDBMaxOpenConns = 10
 	defaultDBPort         = 5432
 )
+
+// Shared HTTP client for tests with connection pooling
+//
+//nolint:gochecknoglobals // Shared client for performance
+var testHTTPClient = &http.Client{
+	Timeout: httpClientTimeout,
+	Transport: &http.Transport{
+		MaxIdleConns:        maxIdleConns,
+		MaxIdleConnsPerHost: maxIdleConnsPerHost,
+		IdleConnTimeout:     idleConnTimeout,
+	},
+}
 
 // TestServer represents a test server instance.
 type TestServer struct {
@@ -96,8 +114,12 @@ func NewTestServer(t *testing.T, router http.Handler, cfg *TestConfig) *TestServ
 
 // Close closes the test server and cleans up resources.
 func (ts *TestServer) Close() {
-	ts.Server.Close()
+	// Close the test server first
+	if ts.Server != nil {
+		ts.Server.Close()
+	}
 
+	// Then close the database
 	if ts.DB != nil {
 		sqlDB, _ := ts.DB.DB()
 		if sqlDB != nil {
@@ -128,29 +150,15 @@ func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 		// Use a unique file-based SQLite database for each test to avoid conflicts
 		// In-memory databases don't work well with global storage.DBConn in parallel tests
 		tempDB := fmt.Sprintf("test_mem_%s.db", uuid.New().String())
+
+		// Use Zap logger adapter for GORM in tests
+		gormLogger := storage.NewGormZapLogger(log.Default())
+
 		db, err = gorm.Open(sqlite.Open(tempDB), &gorm.Config{
+			Logger:                                   gormLogger,
 			SkipDefaultTransaction:                   false,
-			DefaultTransactionTimeout:                0,
-			NamingStrategy:                           nil,
-			FullSaveAssociations:                     false,
-			NowFunc:                                  nil,
-			DryRun:                                   false,
-			PrepareStmt:                              false,
-			PrepareStmtMaxSize:                       0,
-			PrepareStmtTTL:                           0,
 			DisableAutomaticPing:                     false,
 			DisableForeignKeyConstraintWhenMigrating: false,
-			IgnoreRelationshipsWhenMigrating:         false,
-			DisableNestedTransaction:                 false,
-			AllowGlobalUpdate:                        false,
-			QueryFields:                              false,
-			CreateBatchSize:                          0,
-			TranslateError:                           false,
-			PropagateUnscoped:                        false,
-			ClauseBuilders:                           nil,
-			ConnPool:                                 nil,
-			Dialector:                                nil,
-			Plugins:                                  nil,
 		})
 		require.NoError(t, err, "Failed to connect to test database")
 
@@ -165,26 +173,15 @@ func setupTestDB(t *testing.T, useInMemory bool) *gorm.DB {
 	} else {
 		// Use temporary file database
 		tempDB := fmt.Sprintf("test_%s.db", uuid.New().String())
+
+		// Use Zap logger adapter for GORM in tests
+		gormLogger := storage.NewGormZapLogger(log.Default())
+
 		db, err = gorm.Open(sqlite.Open(tempDB), &gorm.Config{
+			Logger:                                   gormLogger,
 			SkipDefaultTransaction:                   false,
-			DefaultTransactionTimeout:                0,
-			NamingStrategy:                           nil,
-			FullSaveAssociations:                     false,
-			NowFunc:                                  nil,
-			DryRun:                                   false,
-			PrepareStmt:                              false,
-			PrepareStmtMaxSize:                       0,
+			DisableAutomaticPing:                     false,
 			DisableForeignKeyConstraintWhenMigrating: false,
-			IgnoreRelationshipsWhenMigrating:         false,
-			DisableNestedTransaction:                 false,
-			AllowGlobalUpdate:                        false,
-			QueryFields:                              false,
-			TranslateError:                           false,
-			PropagateUnscoped:                        false,
-			ClauseBuilders:                           nil,
-			ConnPool:                                 nil,
-			Dialector:                                nil,
-			Plugins:                                  nil,
 		})
 		require.NoError(t, err, "Failed to connect to temp database")
 
@@ -338,9 +335,8 @@ func (ts *TestServer) MakeRequest(req HTTPRequest) *HTTPResponse {
 		httpReq.URL.RawQuery = q.Encode()
 	}
 
-	// Make request
-	client := &http.Client{Timeout: httpClientTimeout}
-	resp, err := client.Do(httpReq)
+	// Make request using shared client
+	resp, err := testHTTPClient.Do(httpReq)
 	require.NoError(ts.t, err, "Failed to make HTTP request")
 
 	defer resp.Body.Close()

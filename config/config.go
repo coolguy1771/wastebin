@@ -138,6 +138,12 @@ func Load() *Config {
 		log.Error("Error loading config", zap.Error(err))
 	}
 
+	// If Dev mode is true, automatically use LocalDB
+	if Conf.Dev {
+		Conf.LocalDB = true
+		log.Info("Development mode enabled, using local SQLite database")
+	}
+
 	// Validate the configuration
 	err = Conf.Validate()
 	if err != nil {

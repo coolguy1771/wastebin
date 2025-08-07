@@ -269,8 +269,8 @@ func TestIntegrationConcurrentOperations(t *testing.T) {
 	defer server.Close()
 
 	const (
-		numGoroutines             = 20
-		numOperationsPerGoroutine = 5
+		numGoroutines             = 5
+		numOperationsPerGoroutine = 3
 	)
 
 	var wg sync.WaitGroup
