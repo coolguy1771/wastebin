@@ -52,6 +52,6 @@
     "typescript-eslint": "^8.0.1",
     "vite": "^7.0.4",
     "vite-bundle-analyzer": "^0.7.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.0"
   }
 }
