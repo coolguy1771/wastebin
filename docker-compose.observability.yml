@@ -47,7 +47,7 @@ services:
 
   # Grafana - Visualization
   grafana:
-    image: grafana/grafana:12.1.0@sha256:6ac590e7cabc2fbe8d7b8fc1ce9c9f0582177b334e0df9c927ebd9670469440f
+    image: grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
     ports:
       - "3001:3000"  # Changed port to avoid conflict with wastebin
     environment:
