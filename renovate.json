@@ -115,10 +115,12 @@
     "enabled": true
   },
   "osvVulnerabilityAlerts": true,
-  "dependencyDashboard": true,
-  "dependencyDashboardTitle": "Renovate Dashboard 🤖",
-  "dependencyDashboardHeader": "This dashboard shows all pending updates managed by Renovate.",
-  "dependencyDashboardFooter": "Configure Renovate in `renovate.json`",
+  "dependencyDashboard": {
+    "enabled": true,
+    "title": "Renovate Dashboard 🤖",
+    "header": "This dashboard shows all pending updates managed by Renovate.",
+    "footer": "Configure Renovate in `renovate.json`"
+  },
   "commitMessageTopic": "{{depName}}",
   "commitMessageExtra": "to {{newVersion}}",
   "commitMessageSuffix": "",
